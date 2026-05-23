@@ -20,17 +20,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Chinese fonts
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq fonts-wqy-microhei fonts-noto-cjk
-          fc-cache -f
-          rm -rf ~/.cache/matplotlib
-          python -c "import matplotlib.font_manager as fm; print([f.name for f in fm.fontManager.ttflist if 'CJK' in f.name or 'Wen' in f.name][:3])"
-
       - name: Install dependencies
         run: |
           pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -q akshare jinja2 matplotlib requests pandas
+
+      - name: Install Chinese fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-wqy-microhei || true
+          fc-cache -f 2>/dev/null || true
+          rm -rf ~/.cache/matplotlib
+          python -c "import matplotlib.font_manager as fm; print([f.name for f in fm.fontManager.ttflist if 'Wen' in f.name or 'CJK' in f.name or 'Noto' in f.name][:5])" || true
 
       - name: Generate daily report
         run: python run_daily.py
