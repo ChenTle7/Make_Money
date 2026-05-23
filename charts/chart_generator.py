@@ -40,7 +40,7 @@ MUTED = '#B0C4DE'
 
 def _fig_to_base64(fig) -> str:
     buf = BytesIO()
-    fig.savefig(buf, format='png', dpi=140, bbox_inches='tight',
+    fig.savefig(buf, format='png', dpi=100, bbox_inches='tight',
                 facecolor=BG_COLOR, edgecolor='none')
     plt.close(fig)
     buf.seek(0)
@@ -78,7 +78,7 @@ def generate_etf_chart(
     grid_params: dict,
 ) -> str:
     """竖排三面板：网格地图 | 振幅趋势 | 周期走势"""
-    fig = plt.figure(figsize=(10, 14), facecolor=BG_COLOR)
+    fig = plt.figure(figsize=(8, 11), facecolor=BG_COLOR)
     gs = GridSpec(3, 1, height_ratios=[1.3, 1, 1], hspace=0.25, figure=fig)
 
     latest = df_daily.iloc[-1]
