@@ -541,7 +541,7 @@ h1 {
 <h1>港股ETF日报 - {{ date }}</h1>
 
 <!-- 大盘指数 -->
-<div class="section">
+<div class="section collapsed">
   <h2>大盘指数</h2>
   <div class="section-body">
   <h3>A股</h3>
@@ -591,7 +591,7 @@ h1 {
 </div>
 
 <!-- Part 1: 今日要闻TOP10 -->
-<div class="section">
+<div class="section collapsed">
   <h2>今日要闻TOP10</h2>
   <div class="section-body">
   {% for item in top_news %}
@@ -612,7 +612,7 @@ h1 {
 </div>
 
 <!-- Part 2: 国际市场动态 -->
-<div class="section">
+<div class="section collapsed">
   <h2>国际市场动态</h2>
   <div class="section-body">
   <h3>全球主要股指</h3>
@@ -649,7 +649,7 @@ h1 {
 
 <!-- 明日关注（专业分析版） -->
 {% if tomorrow_watch %}
-<div class="section">
+<div class="section collapsed">
   <h2>明日关注 - {{ tomorrow_watch.date }} ({{ tomorrow_watch.weekday }})</h2>
   <div class="section-body">
 
@@ -709,7 +709,7 @@ h1 {
 
 <!-- 未来重要事件时间轴 -->
 {% if future_timeline %}
-<div class="section">
+<div class="section collapsed">
   <h2>未来重要事件</h2>
   <div class="section-body">
   <div class="timeline-scroll">
