@@ -23,7 +23,10 @@ jobs:
       - name: Install Chinese fonts
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq fonts-noto-cjk
+          sudo apt-get install -y -qq fonts-wqy-microhei fonts-noto-cjk
+          fc-cache -f
+          rm -rf ~/.cache/matplotlib
+          python -c "import matplotlib.font_manager as fm; print([f.name for f in fm.fontManager.ttflist if 'CJK' in f.name or 'Wen' in f.name][:3])"
 
       - name: Install dependencies
         run: |

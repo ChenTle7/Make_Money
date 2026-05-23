@@ -1,6 +1,7 @@
 """图表生成 - 网格交易专属可视化（移动端优化）"""
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import pandas as pd
@@ -8,10 +9,22 @@ import numpy as np
 import base64
 from io import BytesIO
 
-# 字体：Windows + Linux(GitHub Actions) 兼容
-plt.rcParams['font.sans-serif'] = [
-    'Noto Sans CJK SC', 'Microsoft YaHei', 'SimHei', 'WenQuanYi Micro Hei', 'SimSun'
-]
+# 自动查找可用中文字体
+_CJK_KEYWORDS = ['CJK', 'Hei', 'Song', 'Fang', 'Kai', 'WenQuanYi', 'SimHei',
+                  'SimSun', 'Microsoft YaHei', 'Noto Sans', 'Source Han', 'PingFang']
+_available = set()
+for f in fm.fontManager.ttflist:
+    _available.add(f.name)
+_chosen_font = None
+for kw in _CJK_KEYWORDS:
+    for name in _available:
+        if kw.lower() in name.lower():
+            _chosen_font = name
+            break
+    if _chosen_font:
+        break
+
+plt.rcParams['font.sans-serif'] = [_chosen_font] if _chosen_font else ['DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
 # 颜色
