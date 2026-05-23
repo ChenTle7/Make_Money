@@ -33,3 +33,13 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./reports/output
           keep_files: true
+
+      - name: Send email notification
+        env:
+          SMTP_HOST: smtp.qq.com
+          SMTP_PORT: 465
+          SMTP_SENDER: ${{ secrets.SMTP_SENDER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_RECEIVER: ${{ secrets.SMTP_RECEIVER }}
+          PAGES_URL: https://chentle7.github.io/Make_Money
+        run: python notify.py
