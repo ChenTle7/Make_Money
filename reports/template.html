@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>港股ETF日报 - {{ date }}</title>
+<style>
+/* ========== CSS Variables ========== */
+:root {
+  --bg-start: #0F172A;
+  --bg-end: #1E293B;
+  --card-bg: rgba(255,255,255,0.05);
+  --card-border: rgba(255,255,255,0.1);
+  --card-hover-border: rgba(255,255,255,0.18);
+  --accent: #3B82F6;
+  --accent-dim: rgba(59,130,246,0.15);
+  --up: #EF4444;
+  --up-bg: rgba(239,68,68,0.12);
+  --down: #10B981;
+  --down-bg: rgba(16,185,129,0.12);
+  --neutral: #64748B;
+  --gold: #F59E0B;
+  --text: #F8FAFC;
+  --text2: #94A3B8;
+  --text3: #475569;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --shadow-hover: 0 8px 32px rgba(0,0,0,0.45);
+  --radius: 12px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: Inter, 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  padding: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+}
+
+/* ========== Typography ========== */
+h1 {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 20px 0 16px;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--accent), #60A5FA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========== Card Base ========== */
+.section {
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  animation: fadeUp 0.4s ease-out both;
+}
+.section:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: var(--shadow);
+}
+.section h2 {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section h3 {
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 10px;
+}
+
+/* ========== Animations ========== */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ========== Index Cards ========== */
+.index-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.index-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  transition: all var(--transition);
+}
+.index-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(59,130,246,0.15);
+  transform: translateY(-2px);
+}
+.index-card .name { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.index-card .value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  margin: 4px 0;
+  color: var(--text);
+}
+.index-card .change {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+/* ========== Color Semantics ========== */
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* ========== Commentary ========== */
+.commentary {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text2);
+}
+
+/* ========== News Items ========== */
+.news-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 14px;
+  line-height: 1.6;
+  transition: background var(--transition);
+}
+.news-item:hover { background: rgba(255,255,255,0.02); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
+.news-item:last-child { border-bottom: none; }
+.news-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  background: var(--up-bg);
+  color: var(--up);
+  font-size: 12px; font-weight: 700;
+  border-radius: 6px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+.news-time { color: var(--text3); font-size: 12px; }
+.news-source { color: var(--accent); font-size: 12px; }
+.news-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  padding: 4px 0;
+  display: inline-block;
+  min-height: 32px;
+  line-height: 32px;
+  transition: color var(--transition);
+}
+.news-link:hover { color: #60A5FA; text-decoration: underline; }
+.news-content { color: var(--text2); font-size: 13px; margin-top: 4px; line-height: 1.6; }
+
+/* ========== Indicator Cards ========== */
+.indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.indicator-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 12px;
+  transition: all var(--transition);
+}
+.indicator-card:hover {
+  border-color: var(--card-hover-border);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.indicator-card .ind-name { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.indicator-card .ind-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  color: var(--text);
+  margin: 2px 0;
+}
+.indicator-card .ind-change {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+/* ========== Tables ========== */
+.tech-table, .grid-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  margin: 10px 0;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tech-table th, .grid-table th {
+  background: rgba(255,255,255,0.06);
+  color: var(--text2);
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--card-border);
+}
+.tech-table td, .grid-table td {
+  padding: 10px 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background var(--transition);
+}
+.tech-table tr:last-child td, .grid-table tr:last-child td { border-bottom: none; }
+.tech-table tr:nth-child(even) td, .grid-table tr:nth-child(even) td {
+  background: rgba(255,255,255,0.02);
+}
+.tech-table tr:hover td, .grid-table tr:hover td {
+  background: rgba(59,130,246,0.08);
+}
+
+/* ========== Nav ========== */
+.nav {
+  display: flex;
+  overflow-x: auto;
+  gap: 10px;
+  padding: 12px 4px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+.nav a {
+  white-space: nowrap;
+  padding: 10px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 44px;
+  line-height: 24px;
+  scroll-snap-align: start;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.nav a:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px); }
+.nav a:active { transform: scale(0.96); }
+.nav a.active { background: rgba(255,255,255,0.12); box-shadow: 0 0 12px rgba(59,130,246,0.2); }
+.nav a.action-buy { border-color: var(--up); }
+.nav a.action-hold { border-color: var(--accent); }
+.nav a.action-sell { border-color: var(--down); }
+.nav-pct { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; font-weight: 700; font-size: 12px; margin-left: 4px; }
+
+/* ========== ETF Cards ========== */
+.etf-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+  transition: all var(--transition);
+}
+.etf-card:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: var(--shadow);
+}
+.etf-card.hidden { display: none; }
+.etf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.etf-header .info { font-size: 16px; font-weight: 600; }
+.etf-header .price {
+  font-size: 14px;
+  color: var(--text2);
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+.etf-action {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  min-height: 36px;
+  line-height: 24px;
+}
+.action-buy { background: linear-gradient(135deg, var(--up), #DC2626); color: white; }
+.action-wait { background: var(--neutral); color: white; }
+.action-hold { background: linear-gradient(135deg, var(--accent), #2563EB); color: white; }
+.action-sell { background: linear-gradient(135deg, var(--down), #059669); color: white; }
+
+/* ========== Chart ========== */
+.chart-container { margin: 12px 0; }
+.chart-container img {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+  border: 1px solid var(--card-border);
+}
+
+/* ========== Reasoning ========== */
+.reasoning {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text2);
+  margin: 12px 0;
+  padding: 14px 16px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  border-left: 3px solid var(--accent);
+}
+
+/* ========== Grid Section ========== */
+.grid-section { margin-top: 12px; }
+.grid-section h4 { font-size: 14px; color: var(--text2); margin-bottom: 10px; font-weight: 600; }
+.grid-rec { font-size: 13px; color: var(--text2); margin-top: 8px; padding: 8px 12px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--card-border); }
+
+/* ========== Grid Calculator ========== */
+.grid-calc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+}
+.grid-calc label { font-size: 13px; color: var(--text2); white-space: nowrap; }
+.grid-calc input {
+  width: 100px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: rgba(0,0,0,0.3);
+  color: var(--text1);
+  font-size: 14px;
+  text-align: center;
+  -webkit-appearance: none;
+}
+.grid-calc input:focus { outline: none; border-color: var(--accent); }
+.grid-calc .unit { font-size: 13px; color: var(--text2); }
+.grid-calc button {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 36px;
+}
+.grid-calc button:active { opacity: 0.8; }
+
+/* ========== Todolist / Recommendations ========== */
+.todolist {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 12px;
+}
+.todolist h4 { color: var(--accent); font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.todo-item { padding: 8px 0; font-size: 14px; line-height: 1.6; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.todo-item:last-child { border-bottom: none; }
+.todo-item .star { color: var(--gold); }
+
+/* ========== Timeline ========== */
+.timeline-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 12px 4px 16px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+.tl-day {
+  flex: 0 0 190px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  scroll-snap-align: start;
+  transition: all var(--transition);
+}
+.tl-day:hover {
+  border-color: var(--card-hover-border);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.tl-day-header { text-align: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--card-border); }
+.tl-day-date { font-size: 16px; font-weight: 700; color: var(--text); }
+.tl-day-weekday { font-size: 12px; color: var(--accent); margin-top: 2px; }
+.tl-day-event { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: flex-start; gap: 6px; }
+.tl-day-event:last-child { border-bottom: none; }
+.tl-day-event a { color: var(--accent); text-decoration: none; font-size: 13px; line-height: 1.6; transition: color var(--transition); flex: 1; }
+.tl-day-event a:hover { color: #60A5FA; text-decoration: underline; }
+.tl-day-event span.ev-text { font-size: 13px; color: var(--text2); line-height: 1.6; flex: 1; }
+.tl-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+.tl-dot.critical { background: var(--down); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+.tl-dot.high { background: var(--gold); box-shadow: 0 0 6px rgba(245,158,11,0.4); }
+.tl-cat { font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 2px; font-weight: 500; }
+.tl-cat.critical { background: var(--down-bg); color: var(--down); }
+.tl-cat.high { background: rgba(245,158,11,0.12); color: var(--gold); }
+
+/* ========== Footer ========== */
+.footer { text-align: center; color: var(--text3); font-size: 12px; padding: 24px 16px; line-height: 1.8; }
+
+/* ========== Responsive ========== */
+@media (max-width: 480px) {
+  body { padding: 10px 12px; }
+  h1 { font-size: 18px; padding: 16px 0 12px; }
+  .section { padding: 14px; margin-bottom: 12px; }
+  .section h2 { font-size: 15px; }
+  .index-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .indicator-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .etf-header { flex-direction: column; align-items: flex-start; }
+  .etf-action { align-self: flex-start; }
+  .tech-table, .grid-table { font-size: 12px; }
+  .tech-table th, .grid-table th { padding: 8px 4px; }
+  .tech-table td, .grid-table td { padding: 8px 4px; }
+  .nav { gap: 8px; }
+  .nav a { padding: 8px 12px; font-size: 12px; }
+}
+@media (max-width: 360px) {
+  body { padding: 8px 10px; }
+  .index-grid { grid-template-columns: 1fr 1fr; }
+  .indicator-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 768px) {
+  .index-grid { grid-template-columns: repeat(3, 1fr); }
+  .indicator-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ========== Print ========== */
+@media print {
+  body { background: white; color: #1a1a1a; padding: 0; }
+  .section { background: white; border: 1px solid #ddd; box-shadow: none; break-inside: avoid; }
+  .section:hover { box-shadow: none; border-color: #ddd; }
+  .etf-card { break-inside: avoid; }
+  h1 { color: #0F172A; -webkit-text-fill-color: #0F172A; }
+  .section h2 { color: #0F172A; }
+  .up { color: #DC2626; }
+  .down { color: #059669; }
+  .nav { display: none; }
+  .timeline-scroll { flex-wrap: wrap; overflow: visible; }
+  .tl-day { flex: 0 0 auto; width: 180px; }
+  .chart-container img { max-width: 100%; }
+  .index-card, .indicator-card, .tl-day { border-color: #ddd; background: #f8f9fa; }
+  .news-item:hover { background: none; }
+  * { animation: none !important; transition: none !important; }
+  .section-body { max-height: none !important; opacity: 1 !important; }
+  .section h2::after { display: none !important; }
+}
+
+/* ========== Collapsible Sections ========== */
+.section > h2 {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  padding-right: 28px;
+  transition: color var(--transition);
+}
+.section > h2:hover { color: var(--accent); }
+.section > h2::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text2);
+  border-bottom: 2px solid var(--text2);
+  transform: translateY(-60%) rotate(45deg);
+  transition: transform var(--transition);
+}
+.section.collapsed > h2::after {
+  transform: translateY(-30%) rotate(-45deg);
+}
+.section-body {
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.25s ease;
+  max-height: 8000px;
+  opacity: 1;
+}
+.section.collapsed > .section-body {
+  max-height: 0;
+  opacity: 0;
+}
+</style>
+</head>
+<body>
+
+<h1>港股ETF日报 - {{ date }}</h1>
+
+<!-- 大盘指数 -->
+<div class="section">
+  <h2>大盘指数</h2>
+  <div class="section-body">
+  <h3>A股</h3>
+  <div class="index-grid">
+    {% for name, idx in indices.ashare.items() %}
+    <div class="index-card">
+      <div class="name">{{ name }}</div>
+      <div class="value">{{ idx.close }}</div>
+      {% if idx.change_pct is defined %}
+      <div class="change {{ 'up' if idx.change_pct >= 0 else 'down' }}">
+        {{ '+' if idx.change_pct >= 0 else '' }}{{ idx.change_pct }}%
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <h3>港股</h3>
+  <div class="index-grid">
+    {% for name, idx in indices.hk.items() %}
+    <div class="index-card">
+      <div class="name">{{ name }}</div>
+      <div class="value">{{ idx.close }}</div>
+      {% if idx.change_pct is defined %}
+      <div class="change {{ 'up' if idx.change_pct >= 0 else 'down' }}">
+        {{ '+' if idx.change_pct >= 0 else '' }}{{ idx.change_pct }}%
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <h3>美股 (前夜收盘)</h3>
+  <div class="index-grid">
+    {% for name, idx in indices.us.items() %}
+    <div class="index-card">
+      <div class="name">{{ name }}</div>
+      <div class="value">{{ idx.close }}</div>
+      {% if idx.change_pct is defined %}
+      <div class="change {{ 'up' if idx.change_pct >= 0 else 'down' }}">
+        {{ '+' if idx.change_pct >= 0 else '' }}{{ idx.change_pct }}%
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="commentary">{{ market_commentary }}</div>
+  </div>
+</div>
+
+<!-- Part 1: 今日要闻TOP10 -->
+<div class="section">
+  <h2>今日要闻TOP10</h2>
+  <div class="section-body">
+  {% for item in top_news %}
+  <div class="news-item">
+    <span class="news-num">{{ loop.index }}.</span>
+    <strong>{{ item.title }}</strong>
+    {% if item.content and item.content != 'nan' %}
+    <div class="news-content">{{ item.content[:200] }}{% if item.content|length > 200 %}...{% endif %}</div>
+    {% endif %}
+    <div>
+      {% if item.time and item.time != 'nan' %}<span class="news-time">{{ item.time }}</span>{% endif %}
+      {% if item.source %}<span class="news-source"> | {{ item.source }}</span>{% endif %}
+      {% if item.url and item.url != 'nan' %}<a class="news-link" href="{{ item.url }}" target="_blank"> 原文链接</a>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+</div>
+
+<!-- Part 2: 国际市场动态 -->
+<div class="section">
+  <h2>国际市场动态</h2>
+  <div class="section-body">
+  <h3>全球主要股指</h3>
+  <div class="indicator-grid">
+    {% for idx in global_indicators.indices %}
+    <div class="indicator-card">
+      <div class="ind-name">{{ idx.name }}</div>
+      <div class="ind-value">{{ idx.price }}</div>
+      <div class="ind-change {{ 'up' if idx.up else 'down' }}">{{ idx.change_pct }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <h3>商品期货</h3>
+  <div class="indicator-grid">
+    {% for item in global_indicators.commodities %}
+    <div class="indicator-card">
+      <div class="ind-name">{{ item.name }}</div>
+      <div class="ind-value">{{ item.price }}</div>
+      <div class="ind-change {{ 'up' if item.up else 'down' }}">{{ item.change_pct }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <h3>外汇</h3>
+  <div class="indicator-grid">
+    {% for item in global_indicators.forex %}
+    <div class="indicator-card">
+      <div class="ind-name">{{ item.name }}</div>
+      <div class="ind-value">{{ item.price }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  </div>
+</div>
+
+<!-- 明日关注（专业分析版） -->
+{% if tomorrow_watch %}
+<div class="section">
+  <h2>明日关注 - {{ tomorrow_watch.date }} ({{ tomorrow_watch.weekday }})</h2>
+  <div class="section-body">
+
+  <!-- 1. 宏观事件日历 -->
+  <h3>（一）明日重要宏观事件日历</h3>
+  <table class="grid-table" style="margin-bottom:10px;">
+    <tr><th>时间</th><th>事件</th><th>类型</th><th>重要性</th><th>来源</th></tr>
+    {% for evt in tomorrow_watch.macro_calendar %}
+    <tr>
+      <td>{{ evt.time }}</td>
+      <td style="text-align:left">{{ evt.event }}</td>
+      <td><span style="color:{{ '#ff4444' if evt.type == '确定' else '#FFD700' }}">{{ evt.type }}</span></td>
+      <td>{{ evt.importance }}</td>
+      <td style="font-size:11px;color:#888">{{ evt.source }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- 2. 资金动向 -->
+  <h3>（二）资金动向前瞻</h3>
+  {% for analysis in tomorrow_watch.capital_flow.analysis %}
+  <div class="news-content" style="margin-bottom:6px;">{{ analysis }}</div>
+  {% endfor %}
+
+  <!-- 3. 技术面分析 -->
+  <h3>（三）技术面分析</h3>
+  {% for item in tomorrow_watch.technical_analysis %}
+  <div class="news-content" style="margin-bottom:6px;">{{ item }}</div>
+  {% endfor %}
+
+  <!-- 4. 操作策略 -->
+  <h3>（四）操作策略</h3>
+  <div class="commentary" style="margin-bottom:8px;">
+    市场情绪：{{ tomorrow_watch.strategy.mood }}
+  </div>
+  <table class="grid-table">
+    <tr><th>投资者类型</th><th>建议仓位</th><th>操作建议</th></tr>
+    <tr>
+      <td style="color:#ff4444">激进型</td>
+      <td>{{ tomorrow_watch.strategy.aggressive.position }}</td>
+      <td style="text-align:left;font-size:12px">{{ tomorrow_watch.strategy.aggressive.advice }}</td>
+    </tr>
+    <tr>
+      <td style="color:#FFD700">稳健型</td>
+      <td>{{ tomorrow_watch.strategy.moderate.position }}</td>
+      <td style="text-align:left;font-size:12px">{{ tomorrow_watch.strategy.moderate.advice }}</td>
+    </tr>
+    <tr>
+      <td style="color:#00c853">保守型</td>
+      <td>{{ tomorrow_watch.strategy.conservative.position }}</td>
+      <td style="text-align:left;font-size:12px">{{ tomorrow_watch.strategy.conservative.advice }}</td>
+    </tr>
+  </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- 未来重要事件时间轴 -->
+{% if future_timeline %}
+<div class="section">
+  <h2>未来重要事件</h2>
+  <div class="section-body">
+  <div class="timeline-scroll">
+    {% for day in future_timeline %}
+    <div class="tl-day">
+      <div class="tl-day-header">
+        <div class="tl-day-date">{{ day.date }}</div>
+        <div class="tl-day-weekday">{{ day.weekday }}</div>
+      </div>
+      {% for evt in day.events %}
+      <div class="tl-day-event">
+        <span class="tl-dot {{ evt.importance }}"></span>
+        <div>
+          {% if evt.url and evt.url != 'nan' and evt.url != '' %}
+          <a href="{{ evt.url }}" target="_blank">{{ evt.event }}</a>
+          {% else %}
+          <span class="ev-text">{{ evt.event }}</span>
+          {% endif %}
+          <span class="tl-cat {{ evt.importance }}">{{ evt.category }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ETF导航 -->
+<div class="nav" id="etf-nav">
+  {% for rec in recommendations %}
+  <a href="javascript:void(0)" data-code="{{ rec.code }}" class="action-{{ rec.action_class }}{% if loop.first %} active{% endif %}">{{ rec.name_full }} <span class="nav-pct {{ 'up' if rec.change_pct >= 0 else 'down' }}">{{ '+' if rec.change_pct >= 0 else '' }}{{ rec.change_pct }}%</span></a>
+  {% endfor %}
+</div>
+
+<!-- 今日推荐 -->
+{% if top_picks %}
+<div class="section">
+  <h2>今日网格推荐</h2>
+  <div class="section-body">
+  <div class="todolist">
+    {% for pick in top_picks %}
+    <div class="todo-item">
+      <span class="star">{{ '★' * pick.confidence }}{{ '☆' * (5 - pick.confidence) }}</span>
+      <strong>{{ pick.name }}</strong> ({{ pick.code }}) - {{ pick.action }}: {{ pick.reason_short }}
+    </div>
+    {% endfor %}
+  </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ETF分析 -->
+{% for etf in etf_analysis %}
+<div class="section etf-card{% if not loop.first %} hidden{% endif %}" data-etf="{{ etf.code }}">
+  <div class="etf-header">
+    <div class="info">
+      <strong>{{ etf.name }}</strong> ({{ etf.code }})
+      <span class="price"> 现价: {{ etf.current_price }}
+        <span class="{{ 'up' if etf.change_pct >= 0 else 'down' }}">
+          {{ '+' if etf.change_pct >= 0 else '' }}{{ etf.change_pct }}%
+        </span>
+      </span>
+    </div>
+    <span class="etf-action action-{{ etf.action_class }}">{{ etf.action }}</span>
+  </div>
+
+  <div class="chart-container">
+    <img src="data:image/png;base64,{{ etf.chart_base64 }}" alt="{{ etf.name }}" loading="lazy">
+  </div>
+
+  <div class="reasoning">{{ etf.reasoning }}</div>
+
+  <table class="tech-table">
+    <tr>
+      <th>周期</th><th>趋势</th><th>超卖</th><th>信号</th><th>距今涨幅</th>
+    </tr>
+    <tr>
+      <td>半年</td>
+      <td class="{{ 'up' if etf.trend_6m == '涨' else 'down' if etf.trend_6m == '跌' else '' }}">{{ etf.trend_6m }}</td>
+      <td rowspan="4">{{ etf.oversold_score }}/10</td>
+      <td rowspan="4">{{ etf.signal_strength }}</td>
+      <td class="{{ 'up' if etf.trend_6m_pct > 0 else 'down' if etf.trend_6m_pct < 0 else '' }}">{{ '%+.2f'|format(etf.trend_6m_pct) }}%</td>
+    </tr>
+    <tr>
+      <td>季度</td>
+      <td class="{{ 'up' if etf.trend_3m == '涨' else 'down' if etf.trend_3m == '跌' else '' }}">{{ etf.trend_3m }}</td>
+      <td class="{{ 'up' if etf.trend_3m_pct > 0 else 'down' if etf.trend_3m_pct < 0 else '' }}">{{ '%+.2f'|format(etf.trend_3m_pct) }}%</td>
+    </tr>
+    <tr>
+      <td>月度</td>
+      <td class="{{ 'up' if etf.trend_1m == '涨' else 'down' if etf.trend_1m == '跌' else '' }}">{{ etf.trend_1m }}</td>
+      <td class="{{ 'up' if etf.trend_1m_pct > 0 else 'down' if etf.trend_1m_pct < 0 else '' }}">{{ '%+.2f'|format(etf.trend_1m_pct) }}%</td>
+    </tr>
+    <tr>
+      <td>周度</td>
+      <td class="{{ 'up' if etf.trend_1w == '涨' else 'down' if etf.trend_1w == '跌' else '' }}">{{ etf.trend_1w }}</td>
+      <td class="{{ 'up' if etf.trend_1w_pct > 0 else 'down' if etf.trend_1w_pct < 0 else '' }}">{{ '%+.2f'|format(etf.trend_1w_pct) }}%</td>
+    </tr>
+  </table>
+
+  <div class="grid-section">
+    <h4>网格参数 ({{ etf.spacing_pct }}%间距)</h4>
+    <div class="grid-calc">
+      <label>投入金额</label>
+      <input type="number" id="capital-{{ etf.code }}" value="{{ etf.grid_capital|int }}" min="2000" step="100">
+      <span class="unit">元</span>
+      <button onclick="recalcGrid('{{ etf.code }}', {{ etf.current_price }}, {{ etf.spacing_pct }}, {{ etf.grid_count }})">计算</button>
+    </div>
+    <table class="grid-table" id="grid-table-{{ etf.code }}">
+      <tr><th>格数</th><th>买入价</th><th>卖出价</th><th>份额</th><th>预计利润</th></tr>
+      {% for lv in etf.levels %}
+      <tr>
+        <td>第{{ lv.grid_num }}格</td>
+        <td class="down">{{ lv.buy_price }}</td>
+        <td class="up">{{ lv.sell_price }}</td>
+        <td>{{ lv.shares }}</td>
+        <td>{{ lv.profit_per_trade }}元</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <div class="grid-rec">建议: {{ etf.grid_reason }}</div>
+  </div>
+</div>
+{% endfor %}
+
+<div class="footer">
+  报告生成时间: {{ generate_time }}<br>
+  数据仅供参考，不构成投资建议
+</div>
+
+<script>
+// Collapsible sections
+document.querySelectorAll('.section > h2').forEach(function(h2) {
+  h2.addEventListener('click', function() {
+    this.parentElement.classList.toggle('collapsed');
+  });
+});
+// ETF nav switching
+document.querySelectorAll('#etf-nav a').forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    var code = this.getAttribute('data-code');
+    document.querySelectorAll('#etf-nav a').forEach(function(x) { x.classList.remove('active'); });
+    this.classList.add('active');
+    document.querySelectorAll('.etf-card').forEach(function(card) {
+      card.classList.toggle('hidden', card.getAttribute('data-etf') !== code);
+    });
+    this.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  });
+});
+
+// 网格计算器
+function recalcGrid(code, currentPrice, spacingPct, gridCount) {
+  var input = document.getElementById('capital-' + code);
+  var capital = parseFloat(input.value);
+  if (isNaN(capital) || capital < 2000) {
+    input.style.borderColor = '#EF4444';
+    input.value = Math.max(capital || 0, 2000);
+    capital = parseFloat(input.value);
+  }
+  input.style.borderColor = '';
+
+  var spacingPrice = currentPrice * spacingPct / 100;
+  var perGrid = capital / gridCount;
+  var html = '<tr><th>格数</th><th>买入价</th><th>卖出价</th><th>份额</th><th>预计利润</th></tr>';
+
+  for (var i = 0; i < gridCount; i++) {
+    var buyPrice = Math.round((currentPrice - spacingPrice * (i + 1)) * 10000) / 10000;
+    var sellPrice = Math.round((buyPrice + spacingPrice) * 10000) / 10000;
+    var shares = Math.floor(perGrid / buyPrice / 100) * 100;
+    if (shares < 100) shares = 100;
+    var profit = Math.round(shares * spacingPrice * 100) / 100;
+
+    html += '<tr>';
+    html += '<td>第' + (i + 1) + '格</td>';
+    html += '<td class="down">' + buyPrice.toFixed(3) + '</td>';
+    html += '<td class="up">' + sellPrice.toFixed(3) + '</td>';
+    html += '<td>' + shares + '</td>';
+    html += '<td>' + profit + '元</td>';
+    html += '</tr>';
+  }
+
+  document.getElementById('grid-table-' + code).innerHTML = html;
+}
+</script>
+</body>
+</html>

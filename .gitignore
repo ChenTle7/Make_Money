@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+data/cache/
+reports/output/*.html
+!reports/output/.gitkeep
+*.log
+.claude/

@@ -1,0 +1,5 @@
+akshare
+jinja2
+matplotlib
+requests
+pandas
