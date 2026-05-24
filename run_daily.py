@@ -23,7 +23,7 @@ from analysis.daily_recommendation import generate_recommendation
 from analysis.tomorrow_watch import generate_tomorrow_watch as generate_pro_tomorrow_watch
 from analysis.future_timeline import generate_future_timeline
 from charts.chart_generator import generate_etf_chart
-from reports.html_report import build_report
+from reports.html_report import build_report, build_grid_doc
 
 logging.basicConfig(
     level=logging.INFO,
@@ -265,6 +265,11 @@ def run():
 
     log.info(f"{'='*50}")
     log.info(f"报告已生成: {report_path}")
+
+    # 生成简易网格推荐文档
+    log.info("生成网格推荐文档...")
+    build_grid_doc(date_str, etf_analysis, tomorrow)
+
     log.info(f"{'='*50}")
 
     return report_path

@@ -78,8 +78,8 @@ def generate_etf_chart(
     grid_params: dict,
 ) -> str:
     """竖排三面板：网格地图 | 振幅趋势 | 周期走势"""
-    fig = plt.figure(figsize=(8, 11), facecolor=BG_COLOR)
-    gs = GridSpec(3, 1, height_ratios=[1.3, 1, 1], hspace=0.25, figure=fig)
+    fig = plt.figure(figsize=(8, 12), facecolor=BG_COLOR)
+    gs = GridSpec(3, 1, height_ratios=[1.3, 1, 1], hspace=0.45, figure=fig)
 
     latest = df_daily.iloc[-1]
     prev = df_daily.iloc[-2] if len(df_daily) > 1 else latest

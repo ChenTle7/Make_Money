@@ -284,7 +284,7 @@ h1 {
 }
 .nav a:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px); }
 .nav a:active { transform: scale(0.96); }
-.nav a.active { background: rgba(255,255,255,0.12); box-shadow: 0 0 12px rgba(59,130,246,0.2); }
+.nav a.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; box-shadow: 0 0 16px rgba(59,130,246,0.5); transform: translateY(-1px); }
 .nav a.action-buy { border-color: var(--up); }
 .nav a.action-hold { border-color: var(--accent); }
 .nav a.action-sell { border-color: var(--down); }
@@ -304,6 +304,7 @@ h1 {
   box-shadow: var(--shadow);
 }
 .etf-card.hidden { display: none; }
+.etf-card.active { border-color: var(--accent); box-shadow: 0 0 0 1.5px var(--accent), 0 4px 24px rgba(59,130,246,0.18); }
 .etf-header {
   display: flex;
   justify-content: space-between;
@@ -765,7 +766,7 @@ h1 {
 
 <!-- ETF分析 -->
 {% for etf in etf_analysis %}
-<div class="section etf-card{% if not loop.first %} hidden{% endif %}" data-etf="{{ etf.code }}">
+<div class="section etf-card{% if loop.first %} active{% else %} hidden{% endif %}" data-etf="{{ etf.code }}">
   <div class="etf-header">
     <div class="info">
       <strong>{{ etf.name }}</strong> ({{ etf.code }})
@@ -857,7 +858,9 @@ document.querySelectorAll('#etf-nav a').forEach(function(a) {
     document.querySelectorAll('#etf-nav a').forEach(function(x) { x.classList.remove('active'); });
     this.classList.add('active');
     document.querySelectorAll('.etf-card').forEach(function(card) {
-      card.classList.toggle('hidden', card.getAttribute('data-etf') !== code);
+      var isTarget = card.getAttribute('data-etf') === code;
+      card.classList.toggle('hidden', !isTarget);
+      card.classList.toggle('active', isTarget);
     });
     this.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   });

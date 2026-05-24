@@ -27,11 +27,29 @@ def fetch_etf_daily(code: str, days: int = 180) -> pd.DataFrame:
     except Exception as e:
         log.warning(f"  {code}: AKShare失败({e.__class__.__name__})，使用腾讯接口")
         market = "sh" if code.startswith(("5", "6")) else "sz"
-        url = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
-        params = {"param": f"{market}{code},day,,,{days},qfq"}
-        r = requests.get(url, params=params, timeout=10)
-        raw = r.json()["data"][f"{market}{code}"]["day"]
-        df = pd.DataFrame(raw, columns=["date", "open", "close", "high", "low", "volume"])
+        try:
+            url = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+            params = {"param": f"{market}{code},day,,,{days},qfq"}
+            r = requests.get(url, params=params, timeout=10)
+            resp = r.json()["data"][f"{market}{code}"]
+            # 腾讯接口返回 key 可能是 "day" 或 "qfqday"
+            raw = resp.get("day") or resp.get("qfqday") or resp.get("week") or resp.get("month")
+            if not raw:
+                raise ValueError(f"腾讯返回无日线数据，keys={list(resp.keys())}")
+            df = pd.DataFrame(raw, columns=["date", "open", "close", "high", "low", "volume"])
+        except Exception as e2:
+            log.warning(f"  {code}: 腾讯接口也失败({e2.__class__.__name__})，使用新浪接口")
+            try:
+                url = f"https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
+                params = {"symbol": f"{market}{code}", "scale": "240", "ma": "no", "datalen": str(days)}
+                r = requests.get(url, params=params, timeout=10)
+                data = r.json()
+                df = pd.DataFrame(data)
+                df = df.rename(columns={"day": "date"})
+                df = df[["date", "open", "close", "high", "low", "volume"]]
+            except Exception as e3:
+                log.error(f"  {code}: 所有数据源均失败: AKShare({e.__class__.__name__}) -> 腾讯({e2.__class__.__name__}) -> 新浪({e3.__class__.__name__})")
+                raise
 
     df["date"] = pd.to_datetime(df["date"])
     for col in ["open", "close", "high", "low"]:

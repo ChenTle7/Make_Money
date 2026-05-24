@@ -21,10 +21,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
-          pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -q akshare jinja2 matplotlib requests pandas
+          pip install -q --prefer-binary akshare jinja2 matplotlib requests pandas
 
       - name: Install Chinese fonts
         run: |

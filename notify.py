@@ -1,9 +1,31 @@
-"""邮件通知 - 发送日报链接到邮箱"""
+"""邮件通知 - 发送网格推荐+日报链接到邮箱"""
 import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+from pathlib import Path
+
+
+def _read_grid_html(date_str: str) -> str:
+    """读取网格推荐文档HTML"""
+    grid_path = Path(__file__).parent / "reports" / "output" / f"grid-{date_str}.html"
+    if grid_path.exists():
+        return grid_path.read_text(encoding="utf-8")
+    return ""
+
+
+def _build_text_body(date_str: str, grid_html: str) -> str:
+    """从网格HTML中提取纯文本版本"""
+    lines = [f"港股ETF日报 {date_str}", "=" * 40, ""]
+    if not grid_html:
+        lines.append("网格推荐文档未生成")
+    else:
+        lines.append("网格推荐已生成，详见HTML邮件")
+    lines.append("")
+    pages_url = os.environ.get("PAGES_URL", "https://chentle7.github.io/Make_Money")
+    lines.append(f"查看完整日报: {pages_url}/latest.html")
+    return "\n".join(lines)
 
 
 def send_report_email():
@@ -22,6 +44,9 @@ def send_report_email():
     date_str = datetime.now().strftime("%Y-%m-%d")
     pages_url = os.environ.get("PAGES_URL", "https://chentle7.github.io/Make_Money")
 
+    # 读取网格推荐
+    grid_html = _read_grid_html(date_str)
+
     # 构建邮件
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"港股ETF日报 {date_str}"
@@ -29,21 +54,21 @@ def send_report_email():
     msg["To"] = receiver
 
     # 纯文本版本
-    text = f"港股ETF日报已生成，点击查看: {pages_url}/latest.html"
+    text = _build_text_body(date_str, grid_html)
+    msg.attach(MIMEText(text, "plain", "utf-8"))
 
-    # HTML版本
+    # HTML版本 - 网格推荐 + 查看完整日报按钮
     html = f"""
-    <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 12px; padding: 24px; color: #F0F4F8;">
-            <h2 style="margin: 0 0 8px; color: #F0F4F8;">港股ETF日报</h2>
-            <p style="margin: 0 0 20px; color: #94A3B8; font-size: 14px;">{date_str}</p>
+    <div style="font-family: -apple-system, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px;">
+        {grid_html}
+        <div style="text-align: center; margin: 24px 0;">
             <a href="{pages_url}/latest.html"
                style="display: inline-block; background: #3B82F6; color: white; padding: 12px 28px;
                       border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
-                查看日报
+                查看完整日报
             </a>
-            <p style="margin: 20px 0 0; color: #64748B; font-size: 12px;">
-                包含: 大盘指数 | 市场要闻 | 11只ETF分析 | 网格参数建议
+            <p style="margin: 12px 0 0; color: #94A3B8; font-size: 13px;">
+                完整日报含: 大盘指数 | 市场要闻 | 趋势分析 | K线图表
             </p>
         </div>
         <p style="color: #94A3B8; font-size: 12px; text-align: center; margin-top: 16px;">
@@ -51,8 +76,6 @@ def send_report_email():
         </p>
     </div>
     """
-
-    msg.attach(MIMEText(text, "plain", "utf-8"))
     msg.attach(MIMEText(html, "html", "utf-8"))
 
     # 发送
