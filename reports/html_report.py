@@ -99,8 +99,8 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
         current = etf['current_price']
         grid_lines = ""
         for lv in levels:
-            buy_diff = round(current - lv['buy_price'], 3)
-            sell_diff = round(lv['sell_price'] - current, 3)
+            buy_diff = abs(round(current - lv['buy_price'], 3))
+            sell_diff = abs(round(lv['sell_price'] - current, 3))
             grid_lines += f"""<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; color:#E2E8F0;">
       <span style="color:#94A3B8;">第{lv['grid_num']}格</span>
       <span style="color:#22C55E; margin-left:8px;">买入 -{buy_diff:.3f}</span>
