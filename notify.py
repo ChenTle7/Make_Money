@@ -30,6 +30,8 @@ def _build_text_body(date_str: str, grid_html: str) -> str:
 
 def send_report_email():
     """发送日报通知邮件"""
+    import sys
+
     # 从环境变量读取配置
     smtp_host = os.environ.get("SMTP_HOST", "smtp.qq.com")
     smtp_port = int(os.environ.get("SMTP_PORT", "465"))
@@ -37,8 +39,12 @@ def send_report_email():
     password = os.environ.get("SMTP_PASSWORD", "")
     receiver = os.environ.get("SMTP_RECEIVER", sender)
 
+    print(f"[notify] SMTP_HOST={smtp_host}, SMTP_PORT={smtp_port}")
+    print(f"[notify] SENDER={'已配置' if sender else '未配置'}, RECEIVER={'已配置' if receiver else '未配置'}")
+    print(f"[notify] PASSWORD={'已配置' if password else '未配置'}")
+
     if not sender or not password:
-        print("未配置邮箱，跳过通知")
+        print("[notify] 未配置邮箱，跳过通知")
         return
 
     date_str = datetime.now().strftime("%Y-%m-%d")
@@ -46,6 +52,7 @@ def send_report_email():
 
     # 读取网格推荐
     grid_html = _read_grid_html(date_str)
+    print(f"[notify] 网格HTML长度: {len(grid_html)}")
 
     # 构建邮件
     msg = MIMEMultipart("alternative")
@@ -78,14 +85,13 @@ def send_report_email():
     """
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    # 发送
-    try:
-        with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
-            server.login(sender, password)
-            server.sendmail(sender, receiver, msg.as_string())
-        print(f"通知邮件已发送至 {receiver}")
-    except Exception as e:
-        print(f"邮件发送失败: {e}")
+    # 发送（失败时抛异常让 workflow 报错，方便排查）
+    with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+        print(f"[notify] 已连接SMTP服务器")
+        server.login(sender, password)
+        print(f"[notify] 登录成功")
+        server.sendmail(sender, receiver, msg.as_string())
+    print(f"[notify] 通知邮件已发送至 {receiver}")
 
 
 if __name__ == "__main__":

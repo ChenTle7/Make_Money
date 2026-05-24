@@ -25,7 +25,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -q --prefer-binary akshare jinja2 matplotlib requests pandas
+          pip install -q --prefer-binary akshare jinja2 matplotlib requests pandas numpy
 
       - name: Install Chinese fonts
         run: |
