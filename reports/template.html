@@ -354,6 +354,57 @@ h1 {
   border-left: 3px solid var(--accent);
 }
 
+/* ========== Signal Matrix ========== */
+.signal-matrix {
+  margin: 10px 0;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+}
+.signal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sig-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sig-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sig-dot.bullish, .sig-dot.oversold { background: #22C55E; box-shadow: 0 0 4px rgba(34,197,94,0.5); }
+.sig-dot.bearish, .sig-dot.overbought { background: #EF4444; box-shadow: 0 0 4px rgba(239,68,68,0.5); }
+.sig-dot.neutral { background: #64748B; }
+.sig-dot.surge { background: #F59E0B; box-shadow: 0 0 4px rgba(245,158,11,0.5); }
+.sig-dot.shrink { background: #475569; }
+.sig-label {
+  font-size: 12px;
+  color: var(--text2);
+  font-weight: 500;
+}
+.sig-label small {
+  color: var(--text3);
+  font-size: 10px;
+  margin-left: 2px;
+}
+.signal-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text3);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.signal-meta .warn-tag { color: var(--gold); font-weight: 600; }
+.signal-meta .good-tag { color: #22C55E; font-weight: 600; }
+
 /* ========== Grid Section ========== */
 .grid-section { margin-top: 12px; }
 .grid-section h4 { font-size: 14px; color: var(--text2); margin-bottom: 10px; font-weight: 600; }
@@ -784,6 +835,50 @@ h1 {
   </div>
 
   <div class="reasoning">{{ etf.reasoning }}</div>
+
+  <!-- 信号矩阵 -->
+  {% set signals = etf.signals_detail | default({}) %}
+  {% set vol = etf.volume_analysis | default({}) %}
+  <div class="signal-matrix">
+    <div class="signal-row">
+      <div class="sig-item">
+        <span class="sig-dot {{ 'bullish' if signals.get('MA') == 'bullish' else 'bearish' if signals.get('MA') == 'bearish' else 'neutral' }}"></span>
+        <span class="sig-label">MA</span>
+      </div>
+      <div class="sig-item">
+        <span class="sig-dot {{ 'oversold' if signals.get('RSI') == 'oversold' else 'overbought' if signals.get('RSI') == 'overbought' else 'neutral' }}"></span>
+        <span class="sig-label">RSI<small>{{ '%.0f'|format(etf.rsi_value | default(50)) }}</small></span>
+      </div>
+      <div class="sig-item">
+        <span class="sig-dot {{ 'oversold' if signals.get('KDJ') == 'oversold' else 'overbought' if signals.get('KDJ') == 'overbought' else 'neutral' }}"></span>
+        <span class="sig-label">KDJ<small>J{{ '%.0f'|format(etf.kdj_j | default(50)) }}</small></span>
+      </div>
+      <div class="sig-item">
+        <span class="sig-dot {{ 'bullish' if signals.get('MACD') == 'bullish' else 'bearish' if signals.get('MACD') == 'bearish' else 'neutral' }}"></span>
+        <span class="sig-label">MACD</span>
+      </div>
+      <div class="sig-item">
+        <span class="sig-dot {{ 'oversold' if signals.get('BOLL') == 'near_lower' else 'overbought' if signals.get('BOLL') == 'near_upper' else 'neutral' }}"></span>
+        <span class="sig-label">BOLL</span>
+      </div>
+      <div class="sig-item">
+        <span class="sig-dot {{ 'surge' if signals.get('Volume') == 'surge' else 'shrink' if signals.get('Volume') == 'shrink' else 'neutral' }}"></span>
+        <span class="sig-label">量<small>{{ '%.1f'|format(vol.get('vol_ratio', 1.0)) }}x</small></span>
+      </div>
+    </div>
+    <div class="signal-meta">
+      <span>看多 {{ etf.bullish_count | default(0) }}/6</span>
+      {% if etf.is_prolonged_downtrend | default(false) %}
+        <span class="warn-tag">持续下跌{{ etf.downtrend_days | default(0) }}日</span>
+      {% endif %}
+      {% if etf.grid_return_pct is defined and etf.grid_return_pct != 0 %}
+        <span class="{{ 'good-tag' if etf.grid_return_pct > 0 else 'warn-tag' }}">回测 {{ '%+.1f'|format(etf.grid_return_pct) }}%</span>
+      {% endif %}
+      {% if etf.grid_max_dd_pct is defined and etf.grid_max_dd_pct > 0 %}
+        <span>回撤 {{ '%.1f'|format(etf.grid_max_dd_pct) }}%</span>
+      {% endif %}
+    </div>
+  </div>
 
   <table class="tech-table">
     <tr>

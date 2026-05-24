@@ -14,7 +14,7 @@ from config import (
     A_SHARE_INDICES, HK_INDICES, US_INDICES,
     TRADE_CAPITAL, MAX_ACTIVE_ETFS,
 )
-from data.market_indices import fetch_all_indices
+from data.market_indices import fetch_all_indices, fetch_hk_index_daily
 from data.etf_data import fetch_all_etfs, fetch_etf_minute, fetch_etf_realtime
 from data.news_fetcher import fetch_all_news
 from analysis.trend_assessment import TrendAssessment
@@ -140,6 +140,15 @@ def run():
         log.error(f"  指数获取失败: {e}")
         indices = {"ashare": {}, "hk": {}, "us": {}}
 
+    # === Step 1.5: 获取HSI日线数据（用于全局波动率）===
+    log.info("[1.5] 获取恒生指数日线数据...")
+    try:
+        hsi_df = fetch_hk_index_daily("HSI", days=180)
+        log.info(f"  HSI日线: {len(hsi_df)}天")
+    except Exception as e:
+        log.error(f"  HSI日线获取失败: {e}")
+        hsi_df = None
+
     # === Step 2: 获取ETF数据 ===
     log.info("[2/5] 获取ETF日线数据 (180天)...")
     etf_daily = fetch_all_etfs(days=180)
@@ -176,7 +185,8 @@ def run():
         # 网格参数
         current_price = float(daily_df["close"].iloc[-1])
         avg_amp = float(daily_df["amplitude"].mean())
-        grid = calculate_grid(code, name, current_price, avg_amp, trend)
+        grid = calculate_grid(code, name, current_price, avg_amp, trend,
+                              etf_df=daily_df, hsi_df=hsi_df)
         grid_dict = asdict(grid)
 
         # 实时行情
@@ -208,6 +218,15 @@ def run():
         action = rec.get("action", "观望")
         action_class = {"买入": "buy", "持有": "hold", "减仓": "sell"}.get(action, "wait")
 
+        # 网格优化指标（从缓存读取）
+        from analysis.grid_backtest import load_spacing_cache
+        spacing_cache = load_spacing_cache()
+        opt = spacing_cache.get("etfs", {}).get(code, {})
+
+        signals_detail = trend.get("signals_detail", {})
+        bullish_count = sum(1 for v in signals_detail.values()
+                           if v in ("bullish", "oversold", "near_lower"))
+
         etf_analysis.append({
             "code": code,
             "name": name,
@@ -234,7 +253,29 @@ def run():
             "levels": grid_dict.get("levels", []),
             "grid_reason": grid_dict.get("reason", ""),
             "grid_recommendation": grid_dict.get("grid_recommendation", "normal"),
+            # 信号矩阵数据
+            "signals_detail": signals_detail,
+            "volume_analysis": trend.get("volume_analysis", {}),
+            "bullish_count": bullish_count,
+            "is_prolonged_downtrend": trend.get("is_prolonged_downtrend", False),
+            "downtrend_days": trend.get("downtrend_days", 0),
+            "rsi_value": trend.get("rsi_value", 50),
+            "kdj_j": trend.get("kdj_j", 50),
+            # 网格回测指标
+            "grid_return_pct": opt.get("return_pct", 0),
+            "grid_max_dd_pct": opt.get("max_drawdown_pct", 0),
+            "grid_win_rate": opt.get("win_rate", 0),
         })
+
+        # 风险预警
+        levels = grid_dict.get("levels", [])
+        if levels:
+            lowest_buy = levels[-1]["buy_price"]
+            grid_range_pct = (current_price - lowest_buy) / current_price * 100
+            if grid_range_pct < 5:
+                log.warning(f"  ⚠ {code} 网格底部仅距现价{grid_range_pct:.1f}%，存在击穿风险")
+            if grid_dict.get("spacing_pct", 0) > 2.5:
+                log.warning(f"  ⚠ {code} 间距{grid_dict['spacing_pct']}%，交易频率可能较低")
 
         time.sleep(0.3)
 

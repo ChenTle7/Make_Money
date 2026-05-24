@@ -34,6 +34,7 @@ class TrendAssessment:
         else:
             grid_rec = "normal"
 
+        latest = self.df.iloc[-1]
         return {
             "code": self.code,
             "name": self.name,
@@ -52,6 +53,8 @@ class TrendAssessment:
             "signals_detail": signals,
             "grid_recommendation": grid_rec,
             "volume_analysis": self.vol_analysis,
+            "rsi_value": round(float(latest.get("RSI6", 50)), 1),
+            "kdj_j": round(float(latest.get("J", 50)), 1),
         }
 
     def _trend_by_period(self, days: int) -> tuple:

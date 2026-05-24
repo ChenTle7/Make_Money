@@ -74,6 +74,15 @@ def fetch_us_index(symbol: str, name: str, days: int = 30) -> dict:
         return {"name": name, "code": symbol, "error": str(e)}
 
 
+def fetch_hk_index_daily(symbol: str = "HSI", days: int = 180) -> pd.DataFrame:
+    """获取港股指数完整日线数据（含amplitude），用于波动率计算"""
+    df = ak.stock_hk_index_daily_sina(symbol=symbol)
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date").tail(days).reset_index(drop=True)
+    df["amplitude"] = ((df["high"] - df["low"]) / df["low"] * 100).round(2)
+    return df
+
+
 def fetch_all_indices() -> dict:
     """获取全部7个大盘指数"""
     from config import A_SHARE_INDICES, HK_INDICES, US_INDICES

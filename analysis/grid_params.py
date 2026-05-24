@@ -1,6 +1,9 @@
-"""网格参数计算 - 趋势自适应"""
+"""网格参数计算 - 趋势自适应 + 多因素调整"""
+import logging
 from dataclasses import dataclass, asdict
 from config import COMMISSION_RATE, GRID_COUNT
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,6 +31,31 @@ class GridParams:
     grid_recommendation: str
 
 
+def _find_support_resistance(df, window: int = 60):
+    """从近N天数据中找支撑位和阻力位（局部极值点）"""
+    recent = df.tail(window)
+    if len(recent) < 11:
+        return None, None
+
+    # 支撑：最近的局部最低点（前后各5天内最低）
+    lows = recent["low"].values
+    supports = []
+    for i in range(5, len(lows) - 5):
+        if lows[i] == min(lows[i - 5:i + 6]):
+            supports.append(float(lows[i]))
+    support = max(supports) if supports else float(recent["low"].min())
+
+    # 阻力：最近的局部最高点
+    highs = recent["high"].values
+    resistances = []
+    for i in range(5, len(highs) - 5):
+        if highs[i] == max(highs[i - 5:i + 6]):
+            resistances.append(float(highs[i]))
+    resistance = min(resistances) if resistances else float(recent["high"].max())
+
+    return support, resistance
+
+
 def calculate_grid(
     code: str,
     name: str,
@@ -36,35 +64,126 @@ def calculate_grid(
     trend: dict,
     capital: float = None,
     grid_count: int = GRID_COUNT,
+    etf_df=None,
+    hsi_df=None,
 ) -> GridParams:
-    """计算网格参数，根据趋势调整间距
+    """计算网格参数，多因素自适应调整
 
-    - 基础间距 = 平均振幅 × 0.8
-    - 超卖评分≥6: 间距×0.9 (潜在反弹，收窄网格)
-    - 强势上涨: 间距×1.2 (趋势市场放宽)
-    - 长期下跌: 间距×0.85，优先低位
+    调整因素（优先级从高到低）:
+    1. 历史最优间距乘数（取代默认0.8，每周一回测更新）
+    2. 近期波动率变化（7天/180天振幅比值）
+    3. 恒生指数全局波动率（HSI 7天/180天振幅比值）
+    4. 支撑/阻力位收窄（距关键位<3%时收紧20%）
+    5. 趋势调整（超卖/强势等，原有逻辑）
     """
     if capital is None:
         from config import TRADE_CAPITAL, MAX_ACTIVE_ETFS
         capital = TRADE_CAPITAL / MAX_ACTIVE_ETFS
 
-    # 基础间距
-    spacing_pct = round(avg_amplitude * 0.8, 2)
+    # === 基础间距 ===
+    # 因素1: 历史最优参数（间距乘数 + 格数 + 每格金额）
+    optimal_mult = 0.8
+    optimized_grid_count = None
+    optimized_per_grid = None
+    if etf_df is not None and len(etf_df) >= 30:
+        from analysis.grid_backtest import get_optimal_params
+        try:
+            opt = get_optimal_params(code, etf_df)
+            optimal_mult = opt.get("optimal_multiplier", 0.8)
+            optimized_grid_count = opt.get("grid_count")
+            optimized_per_grid = opt.get("per_grid")
+        except Exception as e:
+            log.warning(f"  {code} 优化失败，使用默认参数: {e}")
 
-    # 根据趋势调整
+    spacing_pct = round(avg_amplitude * optimal_mult, 2)
+    adj_log = f"基础={avg_amplitude:.2f}×{optimal_mult}"
+
+    # === 因素2: 近期波动率变化 ===
+    vol_ratio = 1.0
+    if etf_df is not None and len(etf_df) >= 7:
+        amp_7d = float(etf_df["amplitude"].tail(7).mean())
+        amp_180d = float(etf_df["amplitude"].mean())
+        if amp_180d > 0:
+            vol_ratio = amp_7d / amp_180d
+            vol_ratio = max(0.7, min(1.5, vol_ratio))
+            spacing_pct = round(spacing_pct * vol_ratio, 2)
+            adj_log += f" ×波动率{vol_ratio:.2f}"
+
+    # === 因素3: HSI 全局波动率 ===
+    if hsi_df is not None and len(hsi_df) >= 7:
+        hsi_amp_7d = float(hsi_df["amplitude"].tail(7).mean())
+        hsi_amp_180d = float(hsi_df["amplitude"].mean())
+        if hsi_amp_180d > 0:
+            hsi_ratio = hsi_amp_7d / hsi_amp_180d
+            hsi_ratio = max(0.8, min(1.3, hsi_ratio))
+            if hsi_ratio > 1.2 or hsi_ratio < 0.85:
+                spacing_pct = round(spacing_pct * hsi_ratio, 2)
+                adj_log += f" ×HSI{hsi_ratio:.2f}"
+
+    # === 因素4: 支撑/阻力位收窄 ===
+    if etf_df is not None and len(etf_df) >= 60:
+        support, resistance = _find_support_resistance(etf_df)
+        sr_adj = 1.0
+        if support is not None:
+            dist = abs(current_price - support) / current_price
+            if dist < 0.03:
+                sr_adj *= 0.8
+        if resistance is not None:
+            dist = abs(resistance - current_price) / current_price
+            if dist < 0.03:
+                sr_adj *= 0.8
+        if sr_adj < 1.0:
+            spacing_pct = round(spacing_pct * sr_adj, 2)
+            adj_log += f" ×S/R{sr_adj:.1f}"
+
+    # === 因素5: 趋势调整（原有逻辑）===
     oversold = trend.get("oversold_score", 0)
     grid_rec = trend.get("grid_recommendation", "normal")
 
     if grid_rec == "aggressive":
         spacing_pct = round(spacing_pct * 0.9, 2)
+        adj_log += " ×趋势0.9"
     elif grid_rec == "conservative":
         spacing_pct = round(spacing_pct * 1.2, 2)
+        adj_log += " ×趋势1.2"
+
+    log.info(f"  {code} 网格间距: {adj_log} = {spacing_pct}%")
+
+    # === 全线下跌趋势放宽间距 ===
+    all_down = all(
+        trend.get(f"trend_{p}", "?") == "跌"
+        for p in ["6m", "3m", "1m", "1w"]
+    )
+    if all_down:
+        spacing_pct = round(spacing_pct * 1.3, 2)
+        adj_log += " ×全跌1.3"
+        log.info(f"  {code} 全周期下跌，间距放宽至 {spacing_pct}%")
+
+    # 间距上限：超过3.5%强制收窄
+    if spacing_pct > 3.5:
+        log.info(f"  {code} 间距{spacing_pct}%超上限，收窄至3.5%")
+        spacing_pct = 3.5
+
+    # === 宽间距ETF自动缩减格数 ===
+    effective_grid_count = grid_count
+    if spacing_pct > 2.0:
+        effective_grid_count = max(4, grid_count - 1)
+        if effective_grid_count != grid_count:
+            log.info(f"  {code} 间距>{2}%, 格数 {grid_count}→{effective_grid_count}")
+
+    # 优先使用优化参数（覆盖自动缩减和默认值）
+    if optimized_grid_count is not None:
+        effective_grid_count = optimized_grid_count
+    if optimized_per_grid is not None:
+        per_grid = float(optimized_per_grid)
+        capital = effective_grid_count * per_grid
+    else:
+        per_grid = capital / effective_grid_count
 
     spacing_price = round(current_price * spacing_pct / 100, 4)
-    per_grid = capital / grid_count
 
     levels = []
-    for i in range(grid_count):
+    for i in range(effective_grid_count):
         buy_price = round(current_price - spacing_price * (i + 1), 4)
         sell_price = round(buy_price + spacing_price, 4)
         shares = int(per_grid / buy_price / 100) * 100
@@ -82,24 +201,35 @@ def calculate_grid(
         ))
 
     # 建议
+    risk_notes = []
+    if all_down:
+        risk_notes.append("各周期均下跌，间距已放宽")
+    if spacing_pct > 2.5:
+        risk_notes.append(f"间距较大({spacing_pct}%)，触发频率低")
+    if effective_grid_count < grid_count:
+        risk_notes.append(f"间距>2%，格数已缩减至{effective_grid_count}")
+
+    risk_suffix = "；".join(risk_notes)
+    risk_suffix = f"。注意：{risk_suffix}" if risk_suffix else ""
+
     if oversold >= 6:
         rec = "建议买入"
-        reason = f"超卖评分{oversold}/10，多项指标显示超卖，网格间距已收紧至{spacing_pct}%以捕捉反弹"
+        reason = f"超卖评分{oversold}/10，多项指标显示超卖，网格间距已收紧至{spacing_pct}%以捕捉反弹{risk_suffix}"
     elif oversold >= 4:
         rec = "适度参与"
-        reason = f"超卖评分{oversold}/10，有一定超卖信号，按标准间距{spacing_pct}%挂单"
+        reason = f"超卖评分{oversold}/10，有一定超卖信号，按标准间距{spacing_pct}%挂单{risk_suffix}"
     elif trend.get("signal_strength") == "卖出":
         rec = "建议观望"
-        reason = f"多项指标偏空，暂停网格或缩小仓位，间距{spacing_pct}%"
+        reason = f"多项指标偏空，暂停网格或缩小仓位，间距{spacing_pct}%{risk_suffix}"
     else:
         rec = "按计划挂单"
-        reason = f"趋势中性，按标准间距{spacing_pct}%执行网格"
+        reason = f"趋势中性，按标准间距{spacing_pct}%执行网格{risk_suffix}"
 
     return GridParams(
         code=code,
         name=name,
         current_price=current_price,
-        grid_count=grid_count,
+        grid_count=effective_grid_count,
         spacing_pct=spacing_pct,
         spacing_price=spacing_price,
         capital=capital,

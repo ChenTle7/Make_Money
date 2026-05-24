@@ -5,3 +5,4 @@ reports/output/*.html
 !reports/output/.gitkeep
 *.log
 .claude/
+data/grid_spacing_cache.json
