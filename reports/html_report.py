@@ -95,77 +95,63 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
         change_color = "#EF4444" if change_pct >= 0 else "#22C55E"
         change_sign = "+" if change_pct >= 0 else ""
 
-        # 网格档位行（差价模式）
+        # 网格档位（竖排，每格一行）
         current = etf['current_price']
-        grid_rows = ""
+        grid_lines = ""
         for lv in levels:
             buy_diff = round(current - lv['buy_price'], 3)
             sell_diff = round(lv['sell_price'] - current, 3)
-            grid_rows += f"""
-        <tr style="color:#E2E8F0; font-size:13px;">
-          <td style="padding:5px 10px; border-bottom:1px solid rgba(255,255,255,0.06); color:#94A3B8;">第{lv['grid_num']}格</td>
-          <td style="padding:5px 10px; border-bottom:1px solid rgba(255,255,255,0.06); color:#22C55E; text-align:right;">-{buy_diff:.3f}</td>
-          <td style="padding:5px 10px; border-bottom:1px solid rgba(255,255,255,0.06); color:#EF4444; text-align:right;">+{sell_diff:.3f}</td>
-          <td style="padding:5px 10px; border-bottom:1px solid rgba(255,255,255,0.06); color:#CBD5E1; text-align:right;">{lv['shares']}</td>
-          <td style="padding:5px 10px; border-bottom:1px solid rgba(255,255,255,0.06); color:#CBD5E1; text-align:right;">{lv['profit_per_trade']:.1f}</td>
-        </tr>"""
+            grid_lines += f"""<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; color:#E2E8F0;">
+      <span style="color:#94A3B8;">第{lv['grid_num']}格</span>
+      <span style="color:#22C55E; margin-left:8px;">买入 -{buy_diff:.3f}</span>
+      <span style="color:#EF4444; margin-left:8px;">卖出 +{sell_diff:.3f}</span>
+      <span style="color:#94A3B8; margin-left:8px;">{lv['shares']}股</span>
+    </div>"""
 
-        # 趋势数据
-        def _pct_cell(label, pct):
+        # 趋势（竖排）
+        def _trend_line(label, pct):
             c = "#EF4444" if pct >= 0 else "#22C55E"
             s = "+" if pct >= 0 else ""
-            return f'<td style="padding:4px 8px; color:{c}; font-size:13px;">{label}: {s}{pct:.1f}%</td>'
+            return f'<span style="color:{c}; margin-right:10px;">{label} {s}{pct:.1f}%</span>'
 
-        trend_row = (
-            _pct_cell("半年", etf.get("trend_6m_pct", 0))
-            + _pct_cell("季度", etf.get("trend_3m_pct", 0))
-            + _pct_cell("月度", etf.get("trend_1m_pct", 0))
-            + _pct_cell("周度", etf.get("trend_1w_pct", 0))
+        trend_str = (
+            _trend_line("半年", etf.get("trend_6m_pct", 0))
+            + _trend_line("季度", etf.get("trend_3m_pct", 0))
+            + _trend_line("月度", etf.get("trend_1m_pct", 0))
+            + _trend_line("周度", etf.get("trend_1w_pct", 0))
         )
 
         reasoning = etf.get("reasoning", "")
 
         detail_cards.append(f"""
-  <div style="background:rgba(255,255,255,0.04); border-radius:8px; padding:16px; margin-bottom:12px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+  <div style="background:rgba(255,255,255,0.04); border-radius:8px; padding:14px; margin-bottom:10px;">
+    <div style="margin-bottom:8px;">
       <span style="font-weight:600; color:#F0F4F8; font-size:15px;">{etf['code']} {etf['name']}</span>
-      <span style="background:{action_color}; color:#fff; padding:3px 12px; border-radius:4px; font-size:12px; font-weight:600;">{action}</span>
+      <span style="background:{action_color}; color:#fff; padding:2px 10px; border-radius:4px; font-size:12px; font-weight:600; margin-left:8px;">{action}</span>
     </div>
-    <table style="width:100%; border-collapse:collapse; margin-bottom:8px;">
-      <tr style="color:#94A3B8; font-size:12px;">
-        <td style="padding:4px 8px;">现价 {etf['current_price']:.3f} <span style="color:{change_color};">{change_sign}{change_pct:.2f}%</span></td>
-        <td style="padding:4px 8px;">超卖 {etf.get('oversold_score', 0)}/10</td>
-        <td style="padding:4px 8px;">信号 {etf.get('signal_strength', '中性')}</td>
-      </tr>
-      <tr>{trend_row}</tr>
-    </table>
-    <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
-      <tr style="color:#94A3B8; font-size:12px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <th style="padding:5px 10px; text-align:left;">网格</th>
-        <th style="padding:5px 10px; text-align:right; color:#22C55E;">下跌-买入</th>
-        <th style="padding:5px 10px; text-align:right; color:#EF4444;">上涨-卖出</th>
-        <th style="padding:5px 10px; text-align:right;">股数</th>
-        <th style="padding:5px 10px; text-align:right;">利润</th>
-      </tr>{grid_rows}
-    </table>
+    <div style="color:#94A3B8; font-size:12px; margin-bottom:6px;">
+      现价 {etf['current_price']:.3f} <span style="color:{change_color};">{change_sign}{change_pct:.2f}%</span>
+      <span style="margin-left:10px;">超卖 {etf.get('oversold_score', 0)}/10</span>
+      <span style="margin-left:10px;">信号 {etf.get('signal_strength', '中性')}</span>
+    </div>
+    <div style="font-size:12px; margin-bottom:10px; line-height:1.8;">{trend_str}</div>
+    <div style="margin-bottom:10px;">{grid_lines}</div>
     <p style="color:#CBD5E1; font-size:13px; line-height:1.6; margin:0;">{reasoning}</p>
   </div>""")
 
-    # 明日关注部分
+    # 明日关注部分（竖排布局）
     tomorrow_html = ""
     if tomorrow_watch:
         tw = tomorrow_watch
-        # 宏观事件
+        # 宏观事件（每条竖排）
         cal_items = ""
         for evt in tw.get("macro_calendar", [])[:5]:
             type_color = "#EF4444" if evt.get("type") == "确定" else "#EAB308"
-            cal_items += f"""
-        <tr style="color:#E2E8F0; font-size:13px;">
-          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06); color:#94A3B8;">{evt.get('time','')}</td>
-          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06);">{evt.get('event','')}</td>
-          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06); color:{type_color};">{evt.get('type','')}</td>
-          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06);">{evt.get('importance','')}</td>
-        </tr>"""
+            cal_items += f"""<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; color:#E2E8F0;">
+      <span style="color:#94A3B8;">{evt.get('time','')}</span> {evt.get('event','')}
+      <span style="color:{type_color}; margin-left:6px;">{evt.get('type','')}</span>
+      <span style="color:#94A3B8; margin-left:6px;">{evt.get('importance','')}</span>
+    </div>"""
 
         # 资金动向
         capital_items = ""
@@ -177,36 +163,28 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
         for item in tw.get("technical_analysis", [])[:3]:
             tech_items += f'<p style="color:#CBD5E1; font-size:13px; line-height:1.6; margin:4px 0;">{item}</p>'
 
-        # 操作策略
+        # 操作策略（每条竖排）
         strategy = tw.get("strategy", {})
         mood = strategy.get("mood", "")
         mood_color = {"偏多": "#EF4444", "偏空": "#22C55E"}.get(mood, "#EAB308")
-        strategy_rows = ""
+        strategy_items = ""
         for style_name, style_key, color in [("激进型", "aggressive", "#EF4444"), ("稳健型", "moderate", "#EAB308"), ("保守型", "conservative", "#22C55E")]:
             s = strategy.get(style_key, {})
-            strategy_rows += f"""
-        <tr style="color:#E2E8F0; font-size:13px;">
-          <td style="padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.06); color:{color};">{style_name}</td>
-          <td style="padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.06);">{s.get('position','')}</td>
-          <td style="padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.06); color:#CBD5E1; font-size:12px;">{s.get('advice','')}</td>
-        </tr>"""
+            strategy_items += f"""<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px;">
+      <span style="color:{color}; font-weight:600;">{style_name}</span>
+      <span style="color:#E2E8F0; margin-left:6px;">{s.get('position','')}</span>
+      <div style="color:#CBD5E1; font-size:12px; margin-top:2px;">{s.get('advice','')}</div>
+    </div>"""
 
         tomorrow_html = f"""
-  <div style="background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 12px; padding: 24px; color: #F0F4F8; margin-bottom: 16px;">
-    <h2 style="margin: 0 0 4px; color: #F0F4F8;">明日关注</h2>
-    <p style="margin: 0 0 16px; color: #64748B; font-size: 13px;">{tw.get('date','')} ({tw.get('weekday','')})</p>
+  <div style="background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 12px; padding: 20px; color: #F0F4F8; margin-bottom: 16px;">
+    <h2 style="margin: 0 0 4px; color: #F0F4F8; font-size:16px;">明日关注</h2>
+    <p style="margin: 0 0 14px; color: #64748B; font-size: 13px;">{tw.get('date','')} ({tw.get('weekday','')})</p>
 
     <h3 style="margin: 0 0 8px; color: #F0F4F8; font-size: 14px;">宏观事件</h3>
-    <table style="width:100%; border-collapse:collapse; margin-bottom:14px;">
-      <tr style="color:#94A3B8; font-size:12px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <th style="padding:4px 8px; text-align:left;">时间</th>
-        <th style="padding:4px 8px; text-align:left;">事件</th>
-        <th style="padding:4px 8px; text-align:left;">类型</th>
-        <th style="padding:4px 8px; text-align:left;">重要性</th>
-      </tr>{cal_items}
-    </table>
+    {cal_items}
 
-    <h3 style="margin: 0 0 8px; color: #F0F4F8; font-size: 14px;">资金动向</h3>
+    <h3 style="margin: 14px 0 8px; color: #F0F4F8; font-size: 14px;">资金动向</h3>
     {capital_items}
 
     <h3 style="margin: 14px 0 8px; color: #F0F4F8; font-size: 14px;">技术面</h3>
@@ -214,13 +192,7 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
 
     <h3 style="margin: 14px 0 8px; color: #F0F4F8; font-size: 14px;">操作策略</h3>
     <p style="margin: 0 0 8px; color:#94A3B8; font-size:13px;">市场情绪：<span style="color:{mood_color}; font-weight:600;">{mood}</span></p>
-    <table style="width:100%; border-collapse:collapse;">
-      <tr style="color:#94A3B8; font-size:12px; border-bottom:1px solid rgba(255,255,255,0.1);">
-        <th style="padding:5px 8px; text-align:left;">类型</th>
-        <th style="padding:5px 8px; text-align:left;">仓位</th>
-        <th style="padding:5px 8px; text-align:left;">建议</th>
-      </tr>{strategy_rows}
-    </table>
+    {strategy_items}
   </div>"""
 
     html = f"""<div style="font-family: -apple-system, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto;">
