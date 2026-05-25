@@ -43,7 +43,7 @@ def build_report(
                 "name": etf["name"],
                 "action": action,
                 "confidence": etf.get("confidence", 3),
-                "reason_short": etf.get("reasoning", "")[:50],
+                "reason_short": etf.get("reasoning", ""),
             })
 
     # 按信心度排序
