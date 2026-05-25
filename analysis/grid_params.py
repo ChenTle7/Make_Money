@@ -29,6 +29,8 @@ class GridParams:
     recommendation: str
     reason: str
     grid_recommendation: str
+    price_range_low: float = 0.0
+    price_range_high: float = 0.0
 
 
 def _find_support_resistance(df, window: int = 60):
@@ -225,6 +227,10 @@ def calculate_grid(
         rec = "按计划挂单"
         reason = f"趋势中性，按标准间距{spacing_pct}%执行网格{risk_suffix}"
 
+    # === 价格区间（条件单有效触发范围）===
+    price_range_low = round(current_price - (effective_grid_count + 1) * spacing_price, 3)
+    price_range_high = round(current_price + spacing_price, 3)
+
     return GridParams(
         code=code,
         name=name,
@@ -237,4 +243,6 @@ def calculate_grid(
         recommendation=rec,
         reason=reason,
         grid_recommendation=grid_rec,
+        price_range_low=price_range_low,
+        price_range_high=price_range_high,
     )

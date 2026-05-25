@@ -909,7 +909,7 @@ h1 {
   </table>
 
   <div class="grid-section">
-    <h4>网格参数 ({{ etf.spacing_pct }}%间距)</h4>
+    <h4>网格参数 ({{ etf.spacing_pct }}%间距){% if etf.price_range_low %} <span style="font-weight:400; color:var(--text2); font-size:12px;">有效区间: {{ etf.price_range_low }} ~ {{ etf.price_range_high }}</span>{% endif %}</h4>
     <div class="grid-calc">
       <label>投入金额</label>
       <input type="number" id="capital-{{ etf.code }}" value="{{ etf.grid_capital|int }}" min="2000" step="100">

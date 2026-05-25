@@ -189,11 +189,17 @@ def run():
                               etf_df=daily_df, hsi_df=hsi_df)
         grid_dict = asdict(grid)
 
-        # 实时行情
+        # 实时行情（现价+涨跌幅，用自身日线计算涨跌幅更准确）
         try:
             realtime = fetch_etf_realtime(code)
-            change_pct = realtime.get("change_pct", 0)
+            realtime_price = realtime.get("price", current_price)
         except Exception:
+            realtime_price = current_price
+        # 用日线数据计算涨跌幅（比实时接口的昨收更可靠）
+        if len(daily_df) >= 2:
+            prev_close = float(daily_df["close"].iloc[-2])
+            change_pct = round((realtime_price - prev_close) / prev_close * 100, 2) if prev_close > 0 else 0
+        else:
             change_pct = 0
 
         # 分钟数据
@@ -230,7 +236,7 @@ def run():
         etf_analysis.append({
             "code": code,
             "name": name,
-            "current_price": round(current_price, 3),
+            "current_price": round(realtime_price, 3),
             "change_pct": change_pct,
             "chart_base64": chart_b64,
             "action": action,
@@ -253,6 +259,9 @@ def run():
             "levels": grid_dict.get("levels", []),
             "grid_reason": grid_dict.get("reason", ""),
             "grid_recommendation": grid_dict.get("grid_recommendation", "normal"),
+            # 价格区间
+            "price_range_low": grid_dict.get("price_range_low", 0),
+            "price_range_high": grid_dict.get("price_range_high", 0),
             # 信号矩阵数据
             "signals_detail": signals_detail,
             "volume_analysis": trend.get("volume_analysis", {}),
