@@ -17,7 +17,7 @@ WATCHLIST = [
     {"code": "513120", "name": "港股创新药ETF", "market": "SH"},
     {"code": "520500", "name": "港股通科技30ETF", "market": "SH"},
     {"code": "513090", "name": "香港证券ETF", "market": "SH"},
-    {"code": "159131", "name": "恒生医疗ETF", "market": "SZ"},
+    {"code": "159131", "name": "港股通信息技术ETF", "market": "SZ"},
     {"code": "520600", "name": "港股通汽车ETF", "market": "SH"},
 ]
 
