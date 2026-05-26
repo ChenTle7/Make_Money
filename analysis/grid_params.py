@@ -243,13 +243,24 @@ def calculate_grid(
     # 最大/最小持仓
     max_position = shares_per_grid * effective_grid_count
     min_position = 0
+    # 百分比/金额换算
+    spacing_pct_val = round(spacing_price / current_price * 100, 2)
+    per_grid_yuan = round(shares_per_grid * current_price, 0)
+    range_low_pct = round((price_range_low - current_price) / current_price * 100, 1)
+    range_high_pct = round((price_range_high - current_price) / current_price * 100, 1)
+    max_pos_yuan = round(max_position * current_price, 0)
 
     ths_params = {
         "spacing_price": round(spacing_price, 4),
+        "spacing_pct": spacing_pct_val,
         "shares_per_grid": shares_per_grid,
+        "per_grid_yuan": per_grid_yuan,
         "buy_optimize": buy_opt,
         "sell_optimize": sell_opt,
         "max_position": max_position,
+        "max_pos_yuan": max_pos_yuan,
+        "range_low_pct": range_low_pct,
+        "range_high_pct": range_high_pct,
         "min_position": min_position,
     }
 

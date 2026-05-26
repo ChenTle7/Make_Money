@@ -129,13 +129,12 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
       <div style="font-size:13px; font-weight:600; color:#F59E0B; margin-bottom:6px;">同花顺条件单设置</div>
       <div style="font-size:12px; color:#94A3B8; line-height:2;">
         基准价 <span style="color:#E2E8F0; font-family:monospace;">{current}</span>
-        <span style="margin-left:10px;">步长 <span style="color:#E2E8F0; font-family:monospace;">{ths['spacing_price']}</span></span>
-        <span style="margin-left:10px;">每格 <span style="color:#E2E8F0; font-family:monospace;">{ths['shares_per_grid']}股</span></span>
+        <span style="margin-left:10px;">步长 <span style="color:#E2E8F0; font-family:monospace;">{ths['spacing_price']} ({ths.get('spacing_pct', 0):.2f}%)</span></span>
+        <span style="margin-left:10px;">每格 <span style="color:#E2E8F0; font-family:monospace;">{ths['shares_per_grid']}股 ({ths.get('per_grid_yuan', 0):.0f}元)</span></span>
       </div>
       <div style="font-size:12px; color:#94A3B8; line-height:2;">
-        价格区间 <span style="color:#E2E8F0; font-family:monospace;">{pr_low} ~ {pr_high}</span>
-        <span style="margin-left:10px;">报价优化 <span style="color:#E2E8F0; font-family:monospace;">+{ths['buy_optimize']}/-{ths['sell_optimize']}</span></span>
-        <span style="margin-left:10px;">最大持仓 <span style="color:#E2E8F0; font-family:monospace;">{ths['max_position']}股</span></span>
+        价格区间 <span style="color:#E2E8F0; font-family:monospace;">{pr_low} ~ {pr_high} ({ths.get('range_low_pct', 0):+.1f}% ~ {ths.get('range_high_pct', 0):+.1f}%)</span>
+        <span style="margin-left:10px;">最大持仓 <span style="color:#E2E8F0; font-family:monospace;">{ths['max_position']}股 ({ths.get('max_pos_yuan', 0):.0f}元)</span></span>
       </div>
       <div style="font-size:11px; color:#64748B; margin-top:4px;">反弹买入/回落卖出:关 | 倍数委托:关 | 基准价更新:网格价</div>
     </div>"""
