@@ -12,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import (
     WATCHLIST, DATA_DIR, REPORT_DIR, TEMPLATE_DIR,
     A_SHARE_INDICES, HK_INDICES, US_INDICES,
-    TRADE_CAPITAL, MAX_ACTIVE_ETFS,
 )
 from data.market_indices import fetch_all_indices, fetch_hk_index_daily
 from data.etf_data import fetch_all_etfs, fetch_etf_realtime

@@ -80,21 +80,28 @@ def calculate_grid(
     5. 趋势调整（超卖/强势等，原有逻辑）
     """
     if capital is None:
-        from config import TRADE_CAPITAL, MAX_ACTIVE_ETFS
-        capital = TRADE_CAPITAL / MAX_ACTIVE_ETFS
+        from config import CAPITAL_PER_ETF
+        capital = CAPITAL_PER_ETF
+
+    # === 动态资金调整：根据推荐程度决定实际投入 ===
+    grid_rec = trend.get("grid_recommendation", "normal")
+    if grid_rec == "aggressive":
+        capital = round(capital * 1.2, 0)
+    elif grid_rec == "conservative":
+        capital = round(capital * 0.7, 0)
+    else:
+        capital = round(capital * 0.9, 0)
 
     # === 基础间距 ===
-    # 因素1: 历史最优参数（间距乘数 + 格数 + 每格金额）
+    # 因素1: 历史最优参数（间距乘数 + 格数，资金由用户配置决定）
     optimal_mult = 0.8
     optimized_grid_count = None
-    optimized_per_grid = None
     if etf_df is not None and len(etf_df) >= 30:
         from analysis.grid_backtest import get_optimal_params
         try:
             opt = get_optimal_params(code, etf_df)
             optimal_mult = opt.get("optimal_multiplier", 0.8)
             optimized_grid_count = opt.get("grid_count")
-            optimized_per_grid = opt.get("per_grid")
         except Exception as e:
             log.warning(f"  {code} 优化失败，使用默认参数: {e}")
 
@@ -174,14 +181,11 @@ def calculate_grid(
         if effective_grid_count != grid_count:
             log.info(f"  {code} 间距>{2}%, 格数 {grid_count}→{effective_grid_count}")
 
-    # 优先使用优化参数（覆盖自动缩减和默认值）
+    # 优先使用优化格数（覆盖自动缩减和默认值）
     if optimized_grid_count is not None:
         effective_grid_count = optimized_grid_count
-    if optimized_per_grid is not None:
-        per_grid = float(optimized_per_grid)
-        capital = effective_grid_count * per_grid
-    else:
-        per_grid = capital / effective_grid_count
+
+    per_grid = capital / effective_grid_count
 
     spacing_price = round(current_price * spacing_pct / 100, 4)
 
@@ -228,9 +232,10 @@ def calculate_grid(
         rec = "按计划挂单"
         reason = f"趋势中性，按标准间距{spacing_pct}%执行网格{risk_suffix}"
 
-    # === 价格区间（条件单有效触发范围）===
-    price_range_low = round(current_price - (effective_grid_count + 1) * spacing_price, 3)
-    price_range_high = round(current_price + spacing_price, 3)
+    # === 价格区间（条件单有效触发范围，上下对称）===
+    half_range = max(effective_grid_count, 4)
+    price_range_low = round(current_price - half_range * spacing_price, 3)
+    price_range_high = round(current_price + half_range * spacing_price, 3)
 
     # === 同花顺条件单参数 ===
     # 每格委托股数（取第一格的股数）
@@ -243,12 +248,14 @@ def calculate_grid(
     # 最大/最小持仓
     max_position = shares_per_grid * effective_grid_count
     min_position = 0
+    # 实际投入资金（各格 shares × buy_price 之和）
+    actual_deployed = sum(l.shares * l.buy_price for l in levels) if levels else capital
     # 百分比/金额换算
     spacing_pct_val = round(spacing_price / current_price * 100, 2)
     per_grid_yuan = round(shares_per_grid * current_price, 0)
     range_low_pct = round((price_range_low - current_price) / current_price * 100, 1)
     range_high_pct = round((price_range_high - current_price) / current_price * 100, 1)
-    max_pos_yuan = round(max_position * current_price, 0)
+    max_pos_yuan = round(actual_deployed, 0)
 
     ths_params = {
         "spacing_price": round(spacing_price, 4),

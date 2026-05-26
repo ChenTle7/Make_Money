@@ -22,11 +22,8 @@ WATCHLIST = [
 ]
 
 # 资金参数
-TOTAL_CAPITAL = 21000       # 总资金
-TRADE_CAPITAL = 18000       # 网格交易资金
-RESERVE_CAPITAL = 3000      # 风险储备金
-MIN_CAPITAL_PER_ETF = 2000  # 单只ETF最小资金
-MAX_ACTIVE_ETFS = 3         # 同时最多持有只数，通常2只
+CAPITAL_PER_ETF = 18000     # 每只ETF网格资金上限
+MIN_CAPITAL_PER_ETF = 6000  # 单只ETF最小资金（观望时）
 GRID_COUNT = 6              # 默认网格档数
 COMMISSION_RATE = 0.0000768 # 万0.768
 

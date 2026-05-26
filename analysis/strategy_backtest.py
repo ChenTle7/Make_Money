@@ -10,7 +10,7 @@ import pandas as pd
 # 项目根目录加入path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import WATCHLIST, COMMISSION_RATE, GRID_COUNT, TRADE_CAPITAL, MAX_ACTIVE_ETFS
+from config import WATCHLIST, COMMISSION_RATE, GRID_COUNT, CAPITAL_PER_ETF
 from data.etf_data import fetch_etf_daily
 from analysis.grid_params import calculate_grid, _find_support_resistance
 from analysis.trend_assessment import TrendAssessment
@@ -252,7 +252,7 @@ def _backtest_single_etf(code, name, df_full, df_bt, capital, grid_count_overrid
 def run_backtest(days: int = 30) -> list:
     """对所有自选股执行网格策略回测"""
     results = []
-    capital_per_etf = TRADE_CAPITAL / MAX_ACTIVE_ETFS
+    capital_per_etf = CAPITAL_PER_ETF
 
     for etf_cfg in WATCHLIST:
         code = etf_cfg["code"]
@@ -591,7 +591,8 @@ def run_backtest_daily_top2(days: int = 30) -> dict:
         }
 
     # 网格交易状态
-    funds = float(TRADE_CAPITAL)
+    _TOTAL_BT_CAPITAL = CAPITAL_PER_ETF * 2  # 回测总资金（按2只ETF）
+    funds = float(_TOTAL_BT_CAPITAL)
     holdings = {}  # {code: {grid_center, spacing_price, positions: {buy_price: {shares, buy_date, buy_fee}}, levels}}
     trades = []
     realized = 0.0
@@ -680,7 +681,7 @@ def run_backtest_daily_top2(days: int = 30) -> dict:
                 grid_params = calculate_grid(
                     code, etf_daily[code]["name"], prices["close"], avg_amp,
                     {"oversold_score": 0, "grid_recommendation": "normal"},
-                    capital=TRADE_CAPITAL / 2,
+                    capital=CAPITAL_PER_ETF,
                     etf_df=etf_daily[code]["df_full"],
                 )
                 holdings[code] = {
@@ -784,9 +785,9 @@ def run_backtest_daily_top2(days: int = 30) -> dict:
         "avg_profit_per_trade": round(realized / len(trades), 2) if trades else 0,
         "max_drawdown_pct": round(max_dd, 2),
         "max_drawdown_amount": round(peak * max_dd / 100, 2) if peak else 0,
-        "final_equity": round(equity_curve[-1]["equity"], 2) if equity_curve else TRADE_CAPITAL,
-        "return_pct": round(total_pnl / TRADE_CAPITAL * 100, 2),
-        "capital": TRADE_CAPITAL,
+        "final_equity": round(equity_curve[-1]["equity"], 2) if equity_curve else _TOTAL_BT_CAPITAL,
+        "return_pct": round(total_pnl / _TOTAL_BT_CAPITAL * 100, 2),
+        "capital": _TOTAL_BT_CAPITAL,
         "equity_curve": equity_curve,
         "trades": trades,
         "daily_picks": daily_picks,
@@ -954,7 +955,7 @@ new Chart(document.getElementById('equityChart'),{{
     data:{{labels:{eq_dates},datasets:[{{label:'账户权益',
         data:{eq_values},borderColor:'#3B82F6',borderWidth:2,
         fill:true,backgroundColor:'rgba(59,130,246,0.1)',pointRadius:0,tension:0.3}},
-        {{label:'初始资金',data:Array({len(eq_dates)}).fill({TRADE_CAPITAL}),
+        {{label:'初始资金',data:Array({len(eq_dates)}).fill({CAPITAL_PER_ETF * 2}),
         borderColor:'rgba(148,163,184,0.3)',borderWidth:1,borderDash:[5,5],pointRadius:0,fill:false}}
     ]}},
     options:{{responsive:true,maintainAspectRatio:false,
