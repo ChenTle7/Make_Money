@@ -819,50 +819,6 @@ h1 {
 
   <div class="reasoning">{{ etf.reasoning }}</div>
 
-  <!-- 信号矩阵 -->
-  {% set signals = etf.signals_detail | default({}) %}
-  {% set vol = etf.volume_analysis | default({}) %}
-  <div class="signal-matrix">
-    <div class="signal-row">
-      <div class="sig-item">
-        <span class="sig-dot {{ 'bullish' if signals.get('MA') == 'bullish' else 'bearish' if signals.get('MA') == 'bearish' else 'neutral' }}"></span>
-        <span class="sig-label">MA</span>
-      </div>
-      <div class="sig-item">
-        <span class="sig-dot {{ 'oversold' if signals.get('RSI') == 'oversold' else 'overbought' if signals.get('RSI') == 'overbought' else 'neutral' }}"></span>
-        <span class="sig-label">RSI<small>{{ '%.0f'|format(etf.rsi_value | default(50)) }}</small></span>
-      </div>
-      <div class="sig-item">
-        <span class="sig-dot {{ 'oversold' if signals.get('KDJ') == 'oversold' else 'overbought' if signals.get('KDJ') == 'overbought' else 'neutral' }}"></span>
-        <span class="sig-label">KDJ<small>J{{ '%.0f'|format(etf.kdj_j | default(50)) }}</small></span>
-      </div>
-      <div class="sig-item">
-        <span class="sig-dot {{ 'bullish' if signals.get('MACD') == 'bullish' else 'bearish' if signals.get('MACD') == 'bearish' else 'neutral' }}"></span>
-        <span class="sig-label">MACD</span>
-      </div>
-      <div class="sig-item">
-        <span class="sig-dot {{ 'oversold' if signals.get('BOLL') == 'near_lower' else 'overbought' if signals.get('BOLL') == 'near_upper' else 'neutral' }}"></span>
-        <span class="sig-label">BOLL</span>
-      </div>
-      <div class="sig-item">
-        <span class="sig-dot {{ 'surge' if signals.get('Volume') == 'surge' else 'shrink' if signals.get('Volume') == 'shrink' else 'neutral' }}"></span>
-        <span class="sig-label">量<small>{{ '%.1f'|format(vol.get('vol_ratio', 1.0)) }}x</small></span>
-      </div>
-    </div>
-    <div class="signal-meta">
-      <span>看多 {{ etf.bullish_count | default(0) }}/6</span>
-      {% if etf.is_prolonged_downtrend | default(false) %}
-        <span class="warn-tag">持续下跌{{ etf.downtrend_days | default(0) }}日</span>
-      {% endif %}
-      {% if etf.grid_return_pct is defined and etf.grid_return_pct != 0 %}
-        <span class="{{ 'good-tag' if etf.grid_return_pct > 0 else 'warn-tag' }}">回测 {{ '%+.1f'|format(etf.grid_return_pct) }}%</span>
-      {% endif %}
-      {% if etf.grid_max_dd_pct is defined and etf.grid_max_dd_pct > 0 %}
-        <span>回撤 {{ '%.1f'|format(etf.grid_max_dd_pct) }}%</span>
-      {% endif %}
-    </div>
-  </div>
-
   <table class="tech-table">
     <tr>
       <th>周期</th><th>趋势</th><th>超卖</th><th>信号</th><th>距今涨幅</th>
