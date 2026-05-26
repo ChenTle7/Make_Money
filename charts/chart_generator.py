@@ -74,89 +74,23 @@ def generate_etf_chart(
     code: str,
     name: str,
     df_daily: pd.DataFrame,
-    df_minute: pd.DataFrame,
-    grid_params: dict,
 ) -> str:
-    """竖排三面板：网格地图 | 振幅趋势 | 周期走势"""
-    fig = plt.figure(figsize=(8, 12), facecolor=BG_COLOR)
-    gs = GridSpec(3, 1, height_ratios=[1.3, 1, 1], hspace=0.45, figure=fig)
+    """竖排两面板：振幅趋势 | 周期走势"""
+    fig = plt.figure(figsize=(8, 8), facecolor=BG_COLOR)
+    gs = GridSpec(2, 1, height_ratios=[1, 1], hspace=0.4, figure=fig)
 
-    latest = df_daily.iloc[-1]
-    prev = df_daily.iloc[-2] if len(df_daily) > 1 else latest
-    chg = round((latest["close"] - prev["close"]) / prev["close"] * 100, 2)
-    sign = "+" if chg >= 0 else ""
-
-    # 上：网格地图
-    ax_grid = fig.add_subplot(gs[0])
-    _setup_ax(ax_grid)
-    _draw_grid_map(ax_grid, grid_params, latest["close"], name, code, chg, sign)
-
-    # 中：振幅趋势
-    ax_amp = fig.add_subplot(gs[1])
+    # 上：振幅趋势
+    ax_amp = fig.add_subplot(gs[0])
     _setup_ax(ax_amp)
     _draw_amplitude(ax_amp, df_daily)
 
     # 下：周期走势
-    ax_trend = fig.add_subplot(gs[2])
+    ax_trend = fig.add_subplot(gs[1])
     _setup_ax(ax_trend)
     _draw_sparklines(ax_trend, df_daily)
 
     return _fig_to_base64(fig)
 
-
-def _draw_grid_map(ax, grid_params, current_price, name, code, chg, sign):
-    levels = grid_params.get("levels", []) if isinstance(grid_params, dict) else []
-    spacing_pct = grid_params.get("spacing_pct", 0) if isinstance(grid_params, dict) else 0
-
-    title_color = RED if chg >= 0 else GREEN
-    ax.set_title(f"{name} ({code})  {current_price:.3f}  {sign}{chg}%  |  间距 {spacing_pct}%",
-                 fontsize=16, color=title_color, loc='left', pad=12, fontweight='bold')
-
-    if not levels:
-        ax.text(0.5, 0.5, "暂无网格数据", transform=ax.transAxes,
-                ha='center', va='center', fontsize=16, color=MUTED)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        return
-
-    all_prices = [current_price]
-    for lv in levels:
-        all_prices.append(lv["buy_price"])
-        all_prices.append(lv["sell_price"])
-    price_range = max(all_prices) - min(all_prices)
-    padding = max(price_range * 0.12, current_price * 0.01)
-    ax.set_ylim(min(all_prices) - padding, max(all_prices) + padding)
-    ax.set_xlim(0, 1)
-    ax.set_xticks([])
-    ax.spines['bottom'].set_visible(False)
-
-    for lv in levels:
-        buy = lv["buy_price"]
-        sell = lv["sell_price"]
-        ax.axhspan(buy, sell, alpha=0.08, color=BLUE)
-        ax.axhline(y=buy, color=GREEN, linewidth=2, alpha=0.85)
-        ax.axhline(y=sell, color=RED, linewidth=2, alpha=0.85)
-
-        y_mid = (buy + sell) / 2
-        profit = lv.get("profit_per_trade", 0)
-        shares = lv.get("shares", 0)
-
-        _label_bg(ax, 0.01, buy, f"B{lv['grid_num']} {buy:.3f}",
-                  fontsize=14, color=GREEN, bold=True, ha='left', va='center')
-        _label_bg(ax, 0.99, sell, f"S{lv['grid_num']} {sell:.3f}",
-                  fontsize=14, color=RED, bold=True, ha='right', va='center')
-        _label_bg(ax, 0.5, y_mid, f"{shares}股 +{profit:.0f}元",
-                  fontsize=12, color=MUTED, ha='center', va='center')
-
-    if levels:
-        lowest_buy = min(lv["buy_price"] for lv in levels)
-        highest_sell = max(lv["sell_price"] for lv in levels)
-        if current_price < lowest_buy:
-            _label_bg(ax, 0.98, 0.05, "低于最低买入档",
-                      fontsize=13, color=GREEN, ha='right', transform=ax.transAxes)
-        elif current_price > highest_sell:
-            _label_bg(ax, 0.98, 0.05, "高于最高卖出档",
-                      fontsize=13, color=RED, ha='right', transform=ax.transAxes)
 
 
 def _draw_amplitude(ax, df_daily):

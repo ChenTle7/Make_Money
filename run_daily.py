@@ -22,6 +22,7 @@ from analysis.grid_params import calculate_grid
 from analysis.daily_recommendation import generate_recommendation
 from analysis.tomorrow_watch import generate_tomorrow_watch as generate_pro_tomorrow_watch
 from analysis.future_timeline import generate_future_timeline
+from charts.chart_generator import generate_etf_chart
 from reports.html_report import build_report, build_grid_doc
 
 logging.basicConfig(
@@ -210,6 +211,13 @@ def run():
         action = rec.get("action", "观望")
         action_class = {"买入": "buy", "持有": "hold", "减仓": "sell"}.get(action, "wait")
 
+        # 图表（振幅趋势 + 多周期走势）
+        try:
+            chart_b64 = generate_etf_chart(code, name, daily_df)
+        except Exception as e:
+            log.error(f"  {code} 图表生成失败: {e}")
+            chart_b64 = ""
+
         # 网格优化指标（从缓存读取）
         from analysis.grid_backtest import load_spacing_cache
         spacing_cache = load_spacing_cache()
@@ -224,6 +232,7 @@ def run():
             "name": name,
             "current_price": round(realtime_price, 3),
             "change_pct": change_pct,
+            "chart_base64": chart_b64,
             "action": action,
             "action_class": action_class,
             "confidence": rec.get("confidence", 2),

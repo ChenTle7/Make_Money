@@ -813,6 +813,10 @@ h1 {
     <span class="etf-action action-{{ etf.action_class }}">{{ etf.action }}</span>
   </div>
 
+  <div class="chart-container">
+    <img src="data:image/png;base64,{{ etf.chart_base64 }}" alt="{{ etf.name }}" loading="lazy">
+  </div>
+
   <div class="reasoning">{{ etf.reasoning }}</div>
 
   <table class="tech-table">
