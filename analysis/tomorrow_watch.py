@@ -177,109 +177,137 @@ def _get_weekday() -> str:
     return weekdays[tomorrow.weekday()]
 
 
-def _generate_macro_calendar() -> list:
-    """生成明日宏观事件日历
+def _event_relevance_score(row) -> float:
+    """评估事件对港股ETF的相关度（越高越相关）"""
+    event = str(row["事件"])
+    region = str(row["地区"])
+    imp = int(row["重要性"])
 
-    注意：经济数据发布时间表基于统计局/央行固定发布日历。
-    标注[确定]为已公告事件，[预期]为根据发布规律推算。
-    """
+    score = 0.0
+
+    # 地区权重
+    region_scores = {"中国": 30, "香港": 25, "美国": 20, "日本": 5, "欧元区": 5}
+    score += region_scores.get(region, 0)
+
+    # 事件关键词权重（宏观经济 > 货币政策 > 行业数据 > 商品持仓）
+    high_keywords = ["CPI", "PPI", "GDP", "PMI", "LPR", "MLF", "利率", "非农",
+                     "就业", "工业利润", "社零", "进出口", "贸易帐", "制造业",
+                     "FOMC", "联储", "央行", "零售", "失业率", "ADP"]
+    mid_keywords = ["M2", "M1", "货币供应", "外汇", "国债", "通胀", "GDP",
+                    "景气", "信心指数", "投资", "房地产"]
+    low_keywords = ["持仓", "仓单", "ETF", "SPDR", "iShares", "黄金", "白银", "原油"]
+
+    for kw in high_keywords:
+        if kw in event:
+            score += 15
+            break
+    else:
+        for kw in mid_keywords:
+            if kw in event:
+                score += 8
+                break
+        else:
+            for kw in low_keywords:
+                if kw in event:
+                    score -= 5
+                    break
+
+    # akshare 重要性加成
+    score += imp * 5
+
+    return score
+
+
+def _generate_macro_calendar() -> list:
+    """从百度财经日历获取明日宏观事件"""
     tomorrow = datetime.now() + timedelta(days=1)
     if tomorrow.weekday() >= 5:
         tomorrow += timedelta(days=7 - tomorrow.weekday()) if tomorrow.weekday() == 5 else timedelta(days=1)
 
+    date_str = tomorrow.strftime("%Y%m%d")
+
+    try:
+        df = ak.news_economic_baidu(date=date_str)
+        if df is None or len(df) == 0:
+            return _fallback_calendar(tomorrow)
+
+        df = df.copy()
+        df["_score"] = df.apply(_event_relevance_score, axis=1)
+        df = df.sort_values("_score", ascending=False)
+
+        events = []
+        seen_prefixes = set()
+        for _, row in df.iterrows():
+            if len(events) >= 5:
+                break
+            event_name = str(row["事件"]).strip()
+            # 同类事件去重（如CPI有多个子指标，只取第1条）
+            prefix = event_name[:8]
+            if prefix in seen_prefixes:
+                continue
+            seen_prefixes.add(prefix)
+
+            imp_map = {2: "高", 1: "中"}
+            imp_label = imp_map.get(int(row["重要性"]), "中")
+
+            actual = row.get("公布")
+            expected = row.get("预期")
+            if pd.notna(actual):
+                evt_type = "已公布"
+            elif pd.notna(expected):
+                evt_type = "预期"
+            else:
+                evt_type = "关注"
+
+            events.append({
+                "time": str(row["时间"]),
+                "event": event_name,
+                "type": evt_type,
+                "importance": imp_label,
+                "source": str(row["地区"]),
+            })
+
+        if not events:
+            return _fallback_calendar(tomorrow)
+
+        return events
+
+    except Exception as e:
+        log.warning(f"财经日历获取失败: {e}")
+        return _fallback_calendar(tomorrow)
+
+
+def _fallback_calendar(tomorrow) -> list:
+    """财经日历API不可用时的备用方案"""
     day = tomorrow.day
     month = tomorrow.month
-    weekday = _get_weekday()
 
-    events = []
-
-    # 每日常规事件
-    events.append({
+    events = [{
         "time": "09:20",
         "event": "央行公开市场操作（逆回购）",
         "type": "确定",
         "importance": "中",
         "source": "央行官网",
-    })
+    }]
 
-    # 月度经济数据日历（根据统计局发布规律）
-    if 9 <= day <= 15:
-        if month in [1, 4, 7, 10]:
-            events.append({
-                "time": "10:00",
-                "event": f"国家统计局发布{month}月CPI、PPI数据",
-                "type": "预期",
-                "importance": "高",
-                "source": "统计局月度发布日历",
-            })
-
-    if 14 <= day <= 18:
-        events.append({
-            "time": "10:00",
-            "event": f"国家统计局发布{month}月工业增加值、社会消费品零售总额等经济数据",
-            "type": "预期" if day < 15 else "确定",
-            "importance": "高",
-            "source": "统计局月度发布日历",
-        })
-
-    if 15 <= day <= 20 and month in [1, 4, 7, 10]:
-        events.append({
-            "time": "10:00",
-            "event": f"国家统计局发布{quarter_label(month)}季度GDP数据",
-            "type": "预期",
-            "importance": "极高",
-            "source": "统计局季度发布日历",
-        })
-
-    # MLF续作（每月15日左右）
     if 14 <= day <= 16:
         events.append({
             "time": "09:20",
             "event": "央行MLF续作（关注利率是否调整）",
-            "type": "预期",
-            "importance": "极高",
-            "source": "央行操作日历",
+            "type": "预期", "importance": "极高", "source": "央行操作日历",
         })
-
-    # LPR报价（每月20日）
     if day == 20:
         events.append({
             "time": "09:15",
             "event": "央行公布LPR报价",
-            "type": "确定",
-            "importance": "极高",
-            "source": "央行官网",
+            "type": "确定", "importance": "极高", "source": "央行官网",
         })
-
-    # 每周常规
-    if weekday == "周一":
+    if 15 <= day <= 20 and month in [1, 4, 7, 10]:
+        q = "第一" if month <= 3 else "第二" if month <= 6 else "第三" if month <= 9 else "第四"
         events.append({
-            "time": "全天",
-            "event": "关注周末消息面消化（国务院政策、重大公告等）",
-            "type": "确定",
-            "importance": "中",
-            "source": "市场惯例",
-        })
-
-    # 月末
-    last_day = (tomorrow.replace(month=tomorrow.month % 12 + 1, day=1) - timedelta(days=1)).day
-    if day >= last_day - 1:
-        events.append({
-            "time": "全天",
-            "event": "月末资金面关注（银行MPA考核、跨月资金价格）",
-            "type": "预期",
-            "importance": "中",
-            "source": "市场惯例",
-        })
-
-    # 如果没有特定事件，添加常规关注
-    if len(events) <= 1:
-        events.append({
-            "time": "全天",
-            "event": "关注A股市场正常交易",
-            "type": "确定",
-            "importance": "低",
-            "source": "上交所/深交所",
+            "time": "10:00",
+            "event": f"国家统计局发布{q}季度GDP数据",
+            "type": "预期", "importance": "极高", "source": "统计局",
         })
 
     return events
