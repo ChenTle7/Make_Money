@@ -798,23 +798,6 @@ h1 {
   {% endfor %}
 </div>
 
-<!-- 今日推荐 -->
-{% if top_picks %}
-<div class="section">
-  <h2>今日网格推荐</h2>
-  <div class="section-body">
-  <div class="todolist">
-    {% for pick in top_picks %}
-    <div class="todo-item">
-      <span class="star">{{ '★' * pick.confidence }}{{ '☆' * (5 - pick.confidence) }}</span>
-      <strong>{{ pick.name }}</strong> ({{ pick.code }}) - {{ pick.action }}: {{ pick.reason_short }}
-    </div>
-    {% endfor %}
-  </div>
-  </div>
-</div>
-{% endif %}
-
 <!-- ETF分析 -->
 {% for etf in etf_analysis %}
 <div class="section etf-card{% if loop.first %} active{% else %} hidden{% endif %}" data-etf="{{ etf.code }}">
