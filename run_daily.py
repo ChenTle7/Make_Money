@@ -262,6 +262,8 @@ def run():
             # 价格区间
             "price_range_low": grid_dict.get("price_range_low", 0),
             "price_range_high": grid_dict.get("price_range_high", 0),
+            # 同花顺条件单参数
+            "ths_params": grid_dict.get("ths_params", {}),
             # 信号矩阵数据
             "signals_detail": signals_detail,
             "volume_analysis": trend.get("volume_analysis", {}),

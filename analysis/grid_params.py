@@ -31,6 +31,7 @@ class GridParams:
     grid_recommendation: str
     price_range_low: float = 0.0
     price_range_high: float = 0.0
+    ths_params: dict = None
 
 
 def _find_support_resistance(df, window: int = 60):
@@ -231,6 +232,27 @@ def calculate_grid(
     price_range_low = round(current_price - (effective_grid_count + 1) * spacing_price, 3)
     price_range_high = round(current_price + spacing_price, 3)
 
+    # === 同花顺条件单参数 ===
+    # 每格委托股数（取第一格的股数）
+    shares_per_grid = levels[0].shares if levels else 100
+    # 报价优化：买入上浮、卖出下调（约间距的10%，限制在合理范围）
+    buy_opt = round(spacing_price * 0.1, 4)
+    sell_opt = round(spacing_price * 0.1, 4)
+    buy_opt = round(max(0.001, min(buy_opt, 0.01)), 3)
+    sell_opt = round(max(0.001, min(sell_opt, 0.01)), 3)
+    # 最大/最小持仓
+    max_position = shares_per_grid * effective_grid_count
+    min_position = 0
+
+    ths_params = {
+        "spacing_price": round(spacing_price, 4),
+        "shares_per_grid": shares_per_grid,
+        "buy_optimize": buy_opt,
+        "sell_optimize": sell_opt,
+        "max_position": max_position,
+        "min_position": min_position,
+    }
+
     return GridParams(
         code=code,
         name=name,
@@ -245,4 +267,5 @@ def calculate_grid(
         grid_recommendation=grid_rec,
         price_range_low=price_range_low,
         price_range_high=price_range_high,
+        ths_params=ths_params,
     )

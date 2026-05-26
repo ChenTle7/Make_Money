@@ -18,39 +18,65 @@ log = logging.getLogger(__name__)
 # ============================================================
 
 def fetch_northbound_flow() -> dict:
-    """获取北向资金流向"""
+    """获取港股通（南向）资金流向"""
     result = {"recent_5d": [], "today_net": 0, "trend": "unknown"}
     try:
-        df = ak.stock_hsgt_fund_flow_summary_em()
-        if df is not None and len(df) > 0:
-            cols = df.columns.tolist()
-            # 提取最近数据
-            for _, row in df.iterrows():
-                flow = {
-                    "channel": str(row.iloc[1]).strip(),
-                    "net_flow": row.iloc[6] if len(row) > 6 else 0,
-                    "buy_amount": row.iloc[5] if len(row) > 5 else 0,
-                }
-                result["recent_5d"].append(flow)
-    except Exception as e:
-        log.warning(f"北向资金获取失败: {e}")
+        df_hu = ak.stock_hsgt_hist_em(symbol="港股通沪")
+        df_shen = ak.stock_hsgt_hist_em(symbol="港股通深")
 
-    try:
-        # 分钟级数据判断今日趋势
-        df_min = ak.stock_hsgt_fund_min_em(symbol="北向资金")
-        if df_min is not None and len(df_min) > 0:
-            total_flow = df_min.iloc[:, -1].sum()  # 最后一列为净流入
-            result["today_net"] = round(total_flow, 2)
-            result["trend"] = "流入" if total_flow > 0 else "流出"
+        def _latest_net(df):
+            """从港股通历史数据中取最近一天的净流入"""
+            if df is None or len(df) == 0:
+                return 0, ""
+            latest = df.iloc[-1]
+            date = str(latest.iloc[0])
+            # 列[1]=当日成交总额(亿)，即买入-卖出的净流入
+            # 列[5]=当日资金净流入(亿)，新数据可能为NaN
+            if pd.notna(latest.iloc[1]):
+                net = float(latest.iloc[1])
+            elif pd.notna(latest.iloc[5]):
+                net = float(latest.iloc[5])
+            else:
+                # 兜底: 用买入-卖出计算
+                buy = float(latest.iloc[2]) if pd.notna(latest.iloc[2]) else 0
+                sell = float(latest.iloc[3]) if pd.notna(latest.iloc[3]) else 0
+                net = buy - sell
+            return round(net, 2), date
+
+        hu_net, hu_date = _latest_net(df_hu)
+        shen_net, shen_date = _latest_net(df_shen)
+        today_net = round(hu_net + shen_net, 2)
+        today_date = hu_date or shen_date
+
+        result["today_net"] = today_net
+        result["trend"] = "流入" if today_net > 0 else "流出" if today_net < 0 else "持平"
+        result["today_date"] = today_date
+        result["hu_net"] = hu_net
+        result["shen_net"] = shen_net
+
+        # 最近5天数据
+        if df_hu is not None and len(df_hu) >= 5:
+            for _, row in df_hu.tail(5).iterrows():
+                net = float(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
+                result["recent_5d"].append({
+                    "date": str(row.iloc[0]),
+                    "hu_net": round(net, 2),
+                })
+            # 补充深港通数据
+            if df_shen is not None and len(df_shen) >= 5:
+                for i, (_, row) in enumerate(df_shen.tail(5).iterrows()):
+                    net = float(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
+                    if i < len(result["recent_5d"]):
+                        result["recent_5d"][i]["shen_net"] = round(net, 2)
     except Exception as e:
-        log.warning(f"北向资金分钟数据获取失败: {e}")
+        log.warning(f"港股通资金数据获取失败: {e}")
 
     return result
 
 
 def fetch_margin_data() -> dict:
     """获取融资融券数据"""
-    result = {"latest_date": "", "margin_balance": 0, "change": 0, "trend": "unknown"}
+    result = {"latest_date": "", "margin_balance": 0, "change": 0, "trend": "unknown", "day_span": 1}
     try:
         end = datetime.now().strftime("%Y%m%d")
         start = (datetime.now() - timedelta(days=10)).strftime("%Y%m%d")
@@ -63,11 +89,20 @@ def fetch_margin_data() -> dict:
             balance = float(latest.iloc[2]) if pd.notna(latest.iloc[2]) else 0
             prev_balance = float(prev.iloc[2]) if pd.notna(prev.iloc[2]) else 0
             change = balance - prev_balance
+            # 计算日期跨度
+            try:
+                latest_date = pd.to_datetime(latest.iloc[0])
+                prev_date = pd.to_datetime(prev.iloc[0])
+                day_span = (latest_date - prev_date).days
+            except Exception:
+                day_span = 1
             result = {
                 "latest_date": str(latest.iloc[0]),
+                "prev_date": str(prev.iloc[0]),
                 "margin_balance": round(balance / 1e8, 2),  # 亿元
                 "change": round(change / 1e8, 2),
                 "trend": "增加" if change > 0 else "减少",
+                "day_span": day_span,
             }
     except Exception as e:
         log.warning(f"融资融券数据获取失败: {e}")
@@ -266,24 +301,44 @@ def _generate_capital_flow_section(north: dict, margin: dict, limit_pool: dict) 
         "analysis": [],
     }
 
-    # 北向资金分析
+    # 港股通南向资金分析
     if north.get("trend") == "流入":
+        total = abs(north['today_net'])
+        hu = abs(north.get('hu_net', 0))
+        shen = abs(north.get('shen_net', 0))
+        date = north.get('today_date', '')
         section["analysis"].append(
-            f"北向资金今日净流入{abs(north['today_net'])}亿元，外资情绪偏积极，"
-            f"对港股ETF形成一定支撑。来源: 东方财富沪深港通数据"
+            f"港股通南向资金{date}净流入{total}亿元"
+            f"（沪港通{hu}亿、深港通{shen}亿），内资情绪偏积极，"
+            f"对港股ETF形成支撑。来源: 东方财富港股通数据"
         )
     elif north.get("trend") == "流出":
+        total = abs(north['today_net'])
+        hu = abs(north.get('hu_net', 0))
+        shen = abs(north.get('shen_net', 0))
+        date = north.get('today_date', '')
         section["analysis"].append(
-            f"北向资金今日净流出{abs(north['today_net'])}亿元，外资谨慎情绪升温，"
-            f"港股ETF可能承压。来源: 东方财富沪深港通数据"
+            f"港股通南向资金{date}净流出{total}亿元"
+            f"（沪港通{hu}亿、深港通{shen}亿），内资谨慎情绪升温，"
+            f"港股ETF可能承压。来源: 东方财富港股通数据"
         )
 
     # 融资融券分析
     if margin.get("margin_balance", 0) > 0:
         direction = margin["trend"]
         change = abs(margin["change"])
+        latest_date = margin.get("latest_date", "")
+        prev_date = margin.get("prev_date", "")
+        day_span = margin.get("day_span", 1)
+        # 格式化日期显示
+        date_display = f"{latest_date[:4]}-{latest_date[4:6]}-{latest_date[6:]}" if len(latest_date) == 8 else latest_date
+        prev_display = f"{prev_date[:4]}-{prev_date[4:6]}-{prev_date[6:]}" if len(prev_date) == 8 else prev_date
+        if day_span > 1:
+            span_text = f"较{prev_display}（{day_span}天）{direction}{change}亿元"
+        else:
+            span_text = f"较前日{direction}{change}亿元"
         section["analysis"].append(
-            f"融资余额{margin['margin_balance']}亿元（较前日{direction}{change}亿元），"
+            f"融资余额（{date_display}）{margin['margin_balance']}亿元（{span_text}），"
             f"两融资金{'偏乐观' if direction == '增加' else '偏谨慎'}。来源: 上交所融资融券数据"
         )
 

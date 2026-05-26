@@ -929,6 +929,25 @@ h1 {
       {% endfor %}
     </table>
     <div class="grid-rec">建议: {{ etf.grid_reason }}</div>
+
+    {% set ths = etf.ths_params | default({}) %}
+    {% if ths %}
+    <div style="margin-top:12px; padding:14px 16px; background:rgba(0,0,0,0.2); border-radius:10px; border-left:3px solid var(--gold);">
+      <div style="font-size:14px; font-weight:600; color:var(--gold); margin-bottom:10px;">同花顺条件单设置参考</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; color:var(--text2); line-height:2;">
+        <span>初始基准价</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ etf.current_price }} 元</span>
+        <span>每下跌买入</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.spacing_price }} 元</span>
+        <span>每上涨卖出</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.spacing_price }} 元</span>
+        <span>每格委托股数</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.shares_per_grid }} 股</span>
+        <span>价格区间</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ etf.price_range_low }} ~ {{ etf.price_range_high }}</span>
+        <span>报价优化（买↑/卖↓）</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.buy_optimize }} / {{ ths.sell_optimize }} 元</span>
+        <span>最大持仓</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.max_position }} 股</span>
+      </div>
+      <div style="font-size:11px; color:var(--text3); margin-top:8px; line-height:1.6;">
+        反弹买入 / 回落卖出：关闭 &nbsp;|&nbsp; 倍数委托：关闭 &nbsp;|&nbsp; 基准价更新：网格价
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endfor %}

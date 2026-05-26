@@ -129,6 +129,26 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
 
         reasoning = etf.get("reasoning", "")
 
+        # 同花顺条件单设置
+        ths = etf.get("ths_params", {})
+        ths_html = ""
+        if ths:
+            ths_html = f"""
+    <div style="margin-top:10px; padding:10px 12px; background:rgba(245,158,11,0.08); border-radius:8px; border-left:3px solid #F59E0B;">
+      <div style="font-size:13px; font-weight:600; color:#F59E0B; margin-bottom:6px;">同花顺条件单设置</div>
+      <div style="font-size:12px; color:#94A3B8; line-height:2;">
+        基准价 <span style="color:#E2E8F0; font-family:monospace;">{current}</span>
+        <span style="margin-left:10px;">步长 <span style="color:#E2E8F0; font-family:monospace;">{ths['spacing_price']}</span></span>
+        <span style="margin-left:10px;">每格 <span style="color:#E2E8F0; font-family:monospace;">{ths['shares_per_grid']}股</span></span>
+      </div>
+      <div style="font-size:12px; color:#94A3B8; line-height:2;">
+        价格区间 <span style="color:#E2E8F0; font-family:monospace;">{pr_low} ~ {pr_high}</span>
+        <span style="margin-left:10px;">报价优化 <span style="color:#E2E8F0; font-family:monospace;">+{ths['buy_optimize']}/-{ths['sell_optimize']}</span></span>
+        <span style="margin-left:10px;">最大持仓 <span style="color:#E2E8F0; font-family:monospace;">{ths['max_position']}股</span></span>
+      </div>
+      <div style="font-size:11px; color:#64748B; margin-top:4px;">反弹买入/回落卖出:关 | 倍数委托:关 | 基准价更新:网格价</div>
+    </div>"""
+
         detail_cards.append(f"""
   <div style="background:rgba(255,255,255,0.04); border-radius:8px; padding:14px; margin-bottom:10px;">
     <div style="margin-bottom:8px;">
@@ -142,6 +162,7 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
     </div>
     <div style="font-size:12px; margin-bottom:10px; line-height:1.8;">{trend_str}</div>
     <div style="margin-bottom:10px;">{grid_lines}</div>
+    {ths_html}
     <p style="color:#CBD5E1; font-size:13px; line-height:1.6; margin:0;">{reasoning}</p>
   </div>""")
 
