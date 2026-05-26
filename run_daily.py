@@ -15,14 +15,13 @@ from config import (
     TRADE_CAPITAL, MAX_ACTIVE_ETFS,
 )
 from data.market_indices import fetch_all_indices, fetch_hk_index_daily
-from data.etf_data import fetch_all_etfs, fetch_etf_minute, fetch_etf_realtime
+from data.etf_data import fetch_all_etfs, fetch_etf_realtime
 from data.news_fetcher import fetch_all_news
 from analysis.trend_assessment import TrendAssessment
 from analysis.grid_params import calculate_grid
 from analysis.daily_recommendation import generate_recommendation
 from analysis.tomorrow_watch import generate_tomorrow_watch as generate_pro_tomorrow_watch
 from analysis.future_timeline import generate_future_timeline
-from charts.chart_generator import generate_etf_chart
 from reports.html_report import build_report, build_grid_doc
 
 logging.basicConfig(
@@ -202,24 +201,11 @@ def run():
         else:
             change_pct = 0
 
-        # 分钟数据
-        try:
-            minute_df = fetch_etf_minute(code, scale=5)
-        except Exception:
-            minute_df = None
-
         # 每日建议
         rec = generate_recommendation(code, name, trend, grid, {
             "change_pct": change_pct,
             "volume_ratio": trend.get("volume_analysis", {}).get("vol_ratio", 1.0),
         })
-
-        # 图表
-        try:
-            chart_b64 = generate_etf_chart(code, name, daily_df, minute_df, grid_dict)
-        except Exception as e:
-            log.error(f"  {code} 图表生成失败: {e}")
-            chart_b64 = ""
 
         action = rec.get("action", "观望")
         action_class = {"买入": "buy", "持有": "hold", "减仓": "sell"}.get(action, "wait")
@@ -238,7 +224,6 @@ def run():
             "name": name,
             "current_price": round(realtime_price, 3),
             "change_pct": change_pct,
-            "chart_base64": chart_b64,
             "action": action,
             "action_class": action_class,
             "confidence": rec.get("confidence", 2),
