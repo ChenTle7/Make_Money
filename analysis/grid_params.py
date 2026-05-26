@@ -110,6 +110,10 @@ def calculate_grid(
             log.warning(f"  {code} 优化失败，使用默认参数: {e}")
 
     spacing_pct = round(avg_amplitude * optimal_mult, 2)
+    # 防止振幅为0导致间距为0，后续除零崩溃
+    if spacing_pct < 0.3:
+        log.warning(f"  {code} 振幅过小({avg_amplitude:.2f}%)，间距设为最低0.3%")
+        spacing_pct = 0.3
     adj_log = f"基础={avg_amplitude:.2f}×{optimal_mult}"
 
     # === 因素2: 近期波动率变化 ===
@@ -171,9 +175,7 @@ def calculate_grid(
         sell_spacing_pct = round(spacing_pct * 1.1, 2)
         adj_log += f" 买{buy_spacing_pct} 卖{sell_spacing_pct}×1.1"
 
-    log.info(f"  {code} 步长: {adj_log}")
-
-    log.info(f"  {code} 网格间距: {adj_log} = {spacing_pct}%")
+    log.info(f"  {code} 步长: {adj_log} → 买{buy_spacing_pct}% 卖{sell_spacing_pct}%")
 
     # === 全线下跌趋势放宽间距 ===
     all_down = all(
@@ -202,6 +204,9 @@ def calculate_grid(
     # 优先使用优化格数（覆盖自动缩减和默认值）
     if optimized_grid_count is not None:
         effective_grid_count = optimized_grid_count
+
+    # 防止格数为0导致除零
+    effective_grid_count = max(1, effective_grid_count)
 
     per_grid = capital / effective_grid_count
 
@@ -254,7 +259,7 @@ def calculate_grid(
     # === 价格区间（条件单有效触发范围）===
     # 买入深、卖出浅：下方多留空间捕捉下跌机会，上方适度覆盖反弹
     buy_depth = effective_grid_count      # 买入基础深度：网格数
-    sell_depth = max(2, effective_grid_count // 2)  # 卖出基础深度：网格数60%，至少2格
+    sell_depth = max(2, effective_grid_count // 2)  # 卖出基础深度：网格数一半，至少2格
 
     if etf_df is not None and len(etf_df) >= 30:
         # 支撑/阻力位

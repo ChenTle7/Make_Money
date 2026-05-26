@@ -159,7 +159,7 @@ def optimize_grid_params(
         if robust_score > best_robust_score:
             best_robust_score = robust_score
             # 选该乘数下回撤最小、收益最高的组合
-            best_combo = min(combos, key=lambda c: (-c["return_pct"], -c["max_drawdown_pct"]))
+            best_combo = max(combos, key=lambda c: (c["return_pct"], -c["max_drawdown_pct"]))
             best_mult = mult
             best = best_combo
 

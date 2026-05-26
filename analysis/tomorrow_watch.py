@@ -303,7 +303,7 @@ def _fallback_calendar(tomorrow) -> list:
             "type": "确定", "importance": "极高", "source": "央行官网",
         })
     if 15 <= day <= 20 and month in [1, 4, 7, 10]:
-        q = "第一" if month <= 3 else "第二" if month <= 6 else "第三" if month <= 9 else "第四"
+        q = quarter_label(month)
         events.append({
             "time": "10:00",
             "event": f"国家统计局发布{q}季度GDP数据",

@@ -150,8 +150,12 @@ def run():
 
     # === Step 2: 获取ETF数据 ===
     log.info("[2/5] 获取ETF日线数据 (180天)...")
-    etf_daily = fetch_all_etfs(days=180)
-    log.info(f"  成功获取 {len(etf_daily)}/{len(WATCHLIST)} 只ETF")
+    try:
+        etf_daily = fetch_all_etfs(days=180)
+        log.info(f"  成功获取 {len(etf_daily)}/{len(WATCHLIST)} 只ETF")
+    except Exception as e:
+        log.error(f"  ETF数据获取失败: {e}")
+        etf_daily = {}
 
     # === Step 3: 获取新闻 ===
     log.info("[3/5] 获取市场新闻 (三部分)...")
@@ -165,6 +169,10 @@ def run():
     # === Step 4: 分析 ===
     log.info("[4/5] 技术分析 & 生成建议...")
     etf_analysis = []
+
+    # 预加载网格优化缓存（避免循环内反复读文件）
+    from analysis.grid_backtest import load_spacing_cache
+    spacing_cache = load_spacing_cache()
 
     for etf_cfg in WATCHLIST:
         code = etf_cfg["code"]
@@ -218,8 +226,6 @@ def run():
             chart_b64 = ""
 
         # 网格优化指标（从缓存读取）
-        from analysis.grid_backtest import load_spacing_cache
-        spacing_cache = load_spacing_cache()
         opt = spacing_cache.get("etfs", {}).get(code, {})
 
         signals_detail = trend.get("signals_detail", {})
