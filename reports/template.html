@@ -848,7 +848,7 @@ h1 {
   </table>
 
   <div class="grid-section">
-    <h4>网格参数 ({{ etf.spacing_pct }}%间距){% if etf.price_range_low %} <span style="font-weight:400; color:var(--text2); font-size:12px;">有效区间: {{ etf.price_range_low }} ~ {{ etf.price_range_high }}</span>{% endif %}</h4>
+    <h4>网格参数 (买{{ etf.buy_spacing_pct }}%/卖{{ etf.sell_spacing_pct }}%){% if etf.price_range_low %} <span style="font-weight:400; color:var(--text2); font-size:12px;">有效区间: {{ etf.price_range_low }} ~ {{ etf.price_range_high }}</span>{% endif %}</h4>
     <div class="grid-rec">建议: {{ etf.grid_reason }}</div>
 
     {% set ths = etf.ths_params | default({}) %}
@@ -857,7 +857,8 @@ h1 {
       <div style="font-size:14px; font-weight:600; color:var(--gold); margin-bottom:10px;">同花顺条件单设置参考</div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:14px; color:var(--text2); line-height:2;">
         <span>初始基准价</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ etf.current_price }} 元</span>
-        <span>步长（买/卖）</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.spacing_price }} 元 ({{ '%.2f'|format(ths.spacing_pct) }}%)</span>
+        <span>下跌-买入</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.buy_spacing_price }} 元 ({{ '%.2f'|format(ths.buy_spacing_pct) }}%)</span>
+        <span>上涨-卖出</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.sell_spacing_price }} 元 ({{ '%.2f'|format(ths.sell_spacing_pct) }}%)</span>
         <span>每格委托</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.shares_per_grid }} 股 ({{ '%.0f'|format(ths.per_grid_yuan) }}元)</span>
         <span>价格区间</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ etf.price_range_low }} ~ {{ etf.price_range_high }} ({{ '%+.1f'|format(ths.range_low_pct) }}% ~ {{ '%+.1f'|format(ths.range_high_pct) }}%)</span>
         <span>报价优化（买↑/卖↓）</span><span style="color:var(--text); text-align:right; font-family:monospace;">{{ ths.buy_optimize }} / {{ ths.sell_optimize }} 元</span>

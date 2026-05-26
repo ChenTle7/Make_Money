@@ -24,11 +24,15 @@ class GridParams:
     grid_count: int
     spacing_pct: float
     spacing_price: float
-    capital: float
-    levels: list
-    recommendation: str
-    reason: str
-    grid_recommendation: str
+    buy_spacing_pct: float = 0.0
+    sell_spacing_pct: float = 0.0
+    buy_spacing_price: float = 0.0
+    sell_spacing_price: float = 0.0
+    capital: float = 0.0
+    levels: list = None
+    recommendation: str = ""
+    reason: str = ""
+    grid_recommendation: str = ""
     price_range_low: float = 0.0
     price_range_high: float = 0.0
     ths_params: dict = None
@@ -146,16 +150,28 @@ def calculate_grid(
             spacing_pct = round(spacing_pct * sr_adj, 2)
             adj_log += f" ×S/R{sr_adj:.1f}"
 
-    # === 因素5: 趋势调整（原有逻辑）===
+    # === 因素5: 趋势调整 → 买卖步长分离 ===
+    # 回测结论：下跌行情买紧卖松提升13-55%收益
     oversold = trend.get("oversold_score", 0)
     grid_rec = trend.get("grid_recommendation", "normal")
 
     if grid_rec == "aggressive":
-        spacing_pct = round(spacing_pct * 0.9, 2)
-        adj_log += " ×趋势0.9"
+        # 超卖/适合买入：买步长收窄多接筹码，卖步长放大多吃利润
+        buy_spacing_pct = round(spacing_pct * 0.85, 2)
+        sell_spacing_pct = round(spacing_pct * 1.2, 2)
+        adj_log += f" 买{buy_spacing_pct}×0.85 卖{sell_spacing_pct}×1.2"
     elif grid_rec == "conservative":
-        spacing_pct = round(spacing_pct * 1.2, 2)
-        adj_log += " ×趋势1.2"
+        # 偏空/谨慎：买步长放宽避免接飞刀，卖步长收紧见好就收
+        buy_spacing_pct = round(spacing_pct * 1.15, 2)
+        sell_spacing_pct = round(spacing_pct * 0.9, 2)
+        adj_log += f" 买{buy_spacing_pct}×1.15 卖{sell_spacing_pct}×0.9"
+    else:
+        # 中性：买卖步长基本对称，微调卖略宽
+        buy_spacing_pct = spacing_pct
+        sell_spacing_pct = round(spacing_pct * 1.1, 2)
+        adj_log += f" 买{buy_spacing_pct} 卖{sell_spacing_pct}×1.1"
+
+    log.info(f"  {code} 步长: {adj_log}")
 
     log.info(f"  {code} 网格间距: {adj_log} = {spacing_pct}%")
 
@@ -165,21 +181,23 @@ def calculate_grid(
         for p in ["6m", "3m", "1m", "1w"]
     )
     if all_down:
-        spacing_pct = round(spacing_pct * 1.3, 2)
-        adj_log += " ×全跌1.3"
-        log.info(f"  {code} 全周期下跌，间距放宽至 {spacing_pct}%")
+        buy_spacing_pct = round(buy_spacing_pct * 1.3, 2)
+        sell_spacing_pct = round(sell_spacing_pct * 1.3, 2)
+        log.info(f"  {code} 全周期下跌，买卖间距均放宽×1.3")
 
     # 间距上限：超过3.5%强制收窄
-    if spacing_pct > 3.5:
-        log.info(f"  {code} 间距{spacing_pct}%超上限，收窄至3.5%")
-        spacing_pct = 3.5
+    buy_spacing_pct = min(buy_spacing_pct, 3.5)
+    sell_spacing_pct = min(sell_spacing_pct, 3.5)
+
+    # 平均间距（用于格数判断）
+    avg_spacing_pct = round((buy_spacing_pct + sell_spacing_pct) / 2, 2)
 
     # === 宽间距ETF自动缩减格数 ===
     effective_grid_count = grid_count
-    if spacing_pct > 2.0:
+    if avg_spacing_pct > 2.0:
         effective_grid_count = max(4, grid_count - 1)
         if effective_grid_count != grid_count:
-            log.info(f"  {code} 间距>{2}%, 格数 {grid_count}→{effective_grid_count}")
+            log.info(f"  {code} 均间距>{2}%, 格数 {grid_count}→{effective_grid_count}")
 
     # 优先使用优化格数（覆盖自动缩减和默认值）
     if optimized_grid_count is not None:
@@ -187,16 +205,17 @@ def calculate_grid(
 
     per_grid = capital / effective_grid_count
 
-    spacing_price = round(current_price * spacing_pct / 100, 4)
+    buy_spacing_price = round(current_price * buy_spacing_pct / 100, 4)
+    sell_spacing_price = round(current_price * sell_spacing_pct / 100, 4)
 
     levels = []
     for i in range(effective_grid_count):
-        buy_price = round(current_price - spacing_price * (i + 1), 4)
-        sell_price = round(buy_price + spacing_price, 4)
+        buy_price = round(current_price - buy_spacing_price * (i + 1), 4)
+        sell_price = round(buy_price + sell_spacing_price, 4)
         shares = int(per_grid / buy_price / 100) * 100
         if shares < 100:
             shares = 100
-        profit = round(shares * spacing_price, 2)
+        profit = round(shares * sell_spacing_price, 2)
         fee = round(shares * (buy_price + sell_price) * COMMISSION_RATE, 2)
         levels.append(GridLevel(
             grid_num=i + 1,
@@ -211,8 +230,8 @@ def calculate_grid(
     risk_notes = []
     if all_down:
         risk_notes.append("各周期均下跌，间距已放宽")
-    if spacing_pct > 2.5:
-        risk_notes.append(f"间距较大({spacing_pct}%)，触发频率低")
+    if avg_spacing_pct > 2.5:
+        risk_notes.append(f"间距较大({avg_spacing_pct}%)，触发频率低")
     if effective_grid_count < grid_count:
         risk_notes.append(f"间距>2%，格数已缩减至{effective_grid_count}")
 
@@ -221,16 +240,16 @@ def calculate_grid(
 
     if oversold >= 6:
         rec = "建议买入"
-        reason = f"超卖评分{oversold}/10，多项指标显示超卖，网格间距已收紧至{spacing_pct}%以捕捉反弹{risk_suffix}"
+        reason = f"超卖评分{oversold}/10，买入间距收窄至{buy_spacing_pct}%以多接筹码，卖出间距{sell_spacing_pct}%吃足反弹{risk_suffix}"
     elif oversold >= 4:
         rec = "适度参与"
-        reason = f"超卖评分{oversold}/10，有一定超卖信号，按标准间距{spacing_pct}%挂单{risk_suffix}"
+        reason = f"超卖评分{oversold}/10，买入{buy_spacing_pct}%/卖出{sell_spacing_pct}%挂单{risk_suffix}"
     elif trend.get("signal_strength") == "卖出":
         rec = "建议观望"
-        reason = f"多项指标偏空，暂停网格或缩小仓位，间距{spacing_pct}%{risk_suffix}"
+        reason = f"多项指标偏空，买入间距放宽至{buy_spacing_pct}%避免接飞刀，卖出{sell_spacing_pct}%见好就收{risk_suffix}"
     else:
         rec = "按计划挂单"
-        reason = f"趋势中性，按标准间距{spacing_pct}%执行网格{risk_suffix}"
+        reason = f"趋势中性，买入{buy_spacing_pct}%/卖出{sell_spacing_pct}%执行网格{risk_suffix}"
 
     # === 价格区间（条件单有效触发范围）===
     # 买入深、卖出浅：下方多留空间捕捉下跌机会，上方适度覆盖反弹
@@ -241,65 +260,56 @@ def calculate_grid(
         # 支撑/阻力位
         support, resistance = _find_support_resistance(etf_df)
         if support is not None and support < current_price:
-            # 支撑位比基础深度更深时，延伸到支撑位下方1格缓冲
-            support_grids = int((current_price - support) / spacing_price) + 1
+            support_grids = int((current_price - support) / buy_spacing_price) + 1
             buy_depth = max(buy_depth, support_grids)
         if resistance is not None and resistance > current_price:
-            resistance_grids = int((resistance - current_price) / spacing_price)
+            resistance_grids = int((resistance - current_price) / sell_spacing_price)
             sell_depth = max(sell_depth, resistance_grids)
 
-        # 历史振幅参考：近期平均单日振幅 → 估算典型下跌/反弹幅度
+        # 历史振幅参考
         avg_amp_abs = current_price * float(etf_df["amplitude"].mean()) / 100
         if avg_amp_abs > 0:
-            # 近60天最大回撤（从滚动高点的最大跌幅）
             close_60 = etf_df["close"].tail(60)
             rolling_max = close_60.expanding().max()
             max_dd_pct = float(((rolling_max - close_60) / rolling_max).max())
-            # 近60天最大反弹（从滚动低点的最大涨幅）
             rolling_min = close_60.expanding().min()
             max_bounce_pct = float(((close_60 - rolling_min) / rolling_min).max())
 
-            # 回撤深度应该覆盖历史最大回撤的80%
-            dd_grids = int(max_dd_pct * current_price / spacing_price * 0.8) + 1
+            dd_grids = int(max_dd_pct * current_price / buy_spacing_price * 0.8) + 1
             buy_depth = max(buy_depth, dd_grids)
-            # 反弹深度覆盖历史最大反弹的60%
-            bounce_grids = int(max_bounce_pct * current_price / spacing_price * 0.6) + 1
+            bounce_grids = int(max_bounce_pct * current_price / sell_spacing_price * 0.6) + 1
             sell_depth = max(sell_depth, bounce_grids)
 
     # 合理上限：防止过度投入
     buy_depth = min(buy_depth, 10)
     sell_depth = min(sell_depth, 6)
 
-    price_range_low = round(current_price - buy_depth * spacing_price, 3)
-    price_range_high = round(current_price + sell_depth * spacing_price, 3)
+    price_range_low = round(current_price - buy_depth * buy_spacing_price, 3)
+    price_range_high = round(current_price + sell_depth * sell_spacing_price, 3)
 
-    log.info(f"  {code} 价格区间: 下{buy_depth}格({buy_depth*spacing_pct:.1f}%) "
-             f"上{sell_depth}格({sell_depth*spacing_pct:.1f}%) "
+    log.info(f"  {code} 价格区间: 下{buy_depth}格({buy_depth*buy_spacing_pct:.1f}%) "
+             f"上{sell_depth}格({sell_depth*sell_spacing_pct:.1f}%) "
              f"→ {price_range_low} ~ {price_range_high}")
 
     # === 同花顺条件单参数 ===
-    # 每格委托股数（取第一格的股数）
     shares_per_grid = levels[0].shares if levels else 100
-    # 报价优化：买入上浮、卖出下调（约间距的10%，限制在合理范围）
-    buy_opt = round(spacing_price * 0.1, 4)
-    sell_opt = round(spacing_price * 0.1, 4)
+    buy_opt = round(buy_spacing_price * 0.1, 4)
+    sell_opt = round(sell_spacing_price * 0.1, 4)
     buy_opt = round(max(0.001, min(buy_opt, 0.01)), 3)
     sell_opt = round(max(0.001, min(sell_opt, 0.01)), 3)
-    # 最大/最小持仓
     max_position = shares_per_grid * effective_grid_count
     min_position = 0
-    # 实际投入资金（各格 shares × buy_price 之和）
     actual_deployed = sum(l.shares * l.buy_price for l in levels) if levels else capital
-    # 百分比/金额换算
-    spacing_pct_val = round(spacing_price / current_price * 100, 2)
     per_grid_yuan = round(shares_per_grid * current_price, 0)
     range_low_pct = round((price_range_low - current_price) / current_price * 100, 1)
     range_high_pct = round((price_range_high - current_price) / current_price * 100, 1)
     max_pos_yuan = round(actual_deployed, 0)
 
     ths_params = {
-        "spacing_price": round(spacing_price, 4),
-        "spacing_pct": spacing_pct_val,
+        "buy_spacing_price": round(buy_spacing_price, 4),
+        "sell_spacing_price": round(sell_spacing_price, 4),
+        "buy_spacing_pct": buy_spacing_pct,
+        "sell_spacing_pct": sell_spacing_pct,
         "shares_per_grid": shares_per_grid,
         "per_grid_yuan": per_grid_yuan,
         "buy_optimize": buy_opt,
@@ -316,8 +326,12 @@ def calculate_grid(
         name=name,
         current_price=current_price,
         grid_count=effective_grid_count,
-        spacing_pct=spacing_pct,
-        spacing_price=spacing_price,
+        spacing_pct=avg_spacing_pct,
+        spacing_price=round((buy_spacing_price + sell_spacing_price) / 2, 4),
+        buy_spacing_pct=buy_spacing_pct,
+        sell_spacing_pct=sell_spacing_pct,
+        buy_spacing_price=buy_spacing_price,
+        sell_spacing_price=sell_spacing_price,
         capital=capital,
         levels=[asdict(l) for l in levels],
         recommendation=rec,

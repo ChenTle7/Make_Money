@@ -247,6 +247,8 @@ def run():
             "oversold_score": trend.get("oversold_score", 0),
             "signal_strength": trend.get("signal_strength", "中性"),
             "spacing_pct": grid_dict.get("spacing_pct", 0),
+            "buy_spacing_pct": grid_dict.get("buy_spacing_pct", 0),
+            "sell_spacing_pct": grid_dict.get("sell_spacing_pct", 0),
             "grid_count": grid_dict.get("grid_count", 6),
             "grid_capital": grid_dict.get("capital", 6000),
             "levels": grid_dict.get("levels", []),
