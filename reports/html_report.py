@@ -95,7 +95,7 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
         change_color = "#EF4444" if change_pct >= 0 else "#22C55E"
         change_sign = "+" if change_pct >= 0 else ""
 
-        # 网格档位（竖排，每格一行）
+        # 网格档位（去掉逐格明细，保留区间信息）
         current = etf['current_price']
         pr_low = etf.get('price_range_low', 0)
         pr_high = etf.get('price_range_high', 0)
@@ -103,15 +103,6 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
         if pr_low and pr_high:
             grid_lines += f"""<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1); font-size:12px; color:#94A3B8; margin-bottom:4px;">
       有效区间: <span style="color:#E2E8F0;">{pr_low} ~ {pr_high}</span>
-    </div>"""
-        for lv in levels:
-            buy_diff = abs(round(current - lv['buy_price'], 3))
-            sell_diff = abs(round(lv['sell_price'] - current, 3))
-            grid_lines += f"""<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; color:#E2E8F0;">
-      <span style="color:#94A3B8;">第{lv['grid_num']}格</span>
-      <span style="color:#22C55E; margin-left:8px;">买入 -{buy_diff:.3f}</span>
-      <span style="color:#EF4444; margin-left:8px;">卖出 +{sell_diff:.3f}</span>
-      <span style="color:#94A3B8; margin-left:8px;">{lv['shares']}股</span>
     </div>"""
 
         # 趋势（竖排）

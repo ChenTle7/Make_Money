@@ -910,24 +910,6 @@ h1 {
 
   <div class="grid-section">
     <h4>网格参数 ({{ etf.spacing_pct }}%间距){% if etf.price_range_low %} <span style="font-weight:400; color:var(--text2); font-size:12px;">有效区间: {{ etf.price_range_low }} ~ {{ etf.price_range_high }}</span>{% endif %}</h4>
-    <div class="grid-calc">
-      <label>投入金额</label>
-      <input type="number" id="capital-{{ etf.code }}" value="{{ etf.grid_capital|int }}" min="2000" step="100">
-      <span class="unit">元</span>
-      <button onclick="recalcGrid('{{ etf.code }}', {{ etf.current_price }}, {{ etf.spacing_pct }}, {{ etf.grid_count }})">计算</button>
-    </div>
-    <table class="grid-table" id="grid-table-{{ etf.code }}">
-      <tr><th>格数</th><th>买入价</th><th>卖出价</th><th>份额</th><th>预计利润</th></tr>
-      {% for lv in etf.levels %}
-      <tr>
-        <td>第{{ lv.grid_num }}格</td>
-        <td class="down">{{ lv.buy_price }}</td>
-        <td class="up">{{ lv.sell_price }}</td>
-        <td>{{ lv.shares }}</td>
-        <td>{{ lv.profit_per_trade }}元</td>
-      </tr>
-      {% endfor %}
-    </table>
     <div class="grid-rec">建议: {{ etf.grid_reason }}</div>
 
     {% set ths = etf.ths_params | default({}) %}
@@ -979,40 +961,6 @@ document.querySelectorAll('#etf-nav a').forEach(function(a) {
     this.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   });
 });
-
-// 网格计算器
-function recalcGrid(code, currentPrice, spacingPct, gridCount) {
-  var input = document.getElementById('capital-' + code);
-  var capital = parseFloat(input.value);
-  if (isNaN(capital) || capital < 2000) {
-    input.style.borderColor = '#EF4444';
-    input.value = Math.max(capital || 0, 2000);
-    capital = parseFloat(input.value);
-  }
-  input.style.borderColor = '';
-
-  var spacingPrice = currentPrice * spacingPct / 100;
-  var perGrid = capital / gridCount;
-  var html = '<tr><th>格数</th><th>买入价</th><th>卖出价</th><th>份额</th><th>预计利润</th></tr>';
-
-  for (var i = 0; i < gridCount; i++) {
-    var buyPrice = Math.round((currentPrice - spacingPrice * (i + 1)) * 10000) / 10000;
-    var sellPrice = Math.round((buyPrice + spacingPrice) * 10000) / 10000;
-    var shares = Math.floor(perGrid / buyPrice / 100) * 100;
-    if (shares < 100) shares = 100;
-    var profit = Math.round(shares * spacingPrice * 100) / 100;
-
-    html += '<tr>';
-    html += '<td>第' + (i + 1) + '格</td>';
-    html += '<td class="down">' + buyPrice.toFixed(3) + '</td>';
-    html += '<td class="up">' + sellPrice.toFixed(3) + '</td>';
-    html += '<td>' + shares + '</td>';
-    html += '<td>' + profit + '元</td>';
-    html += '</tr>';
-  }
-
-  document.getElementById('grid-table-' + code).innerHTML = html;
-}
 </script>
 </body>
 </html>
