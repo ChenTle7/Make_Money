@@ -232,10 +232,50 @@ def calculate_grid(
         rec = "按计划挂单"
         reason = f"趋势中性，按标准间距{spacing_pct}%执行网格{risk_suffix}"
 
-    # === 价格区间（条件单有效触发范围，上下对称）===
-    half_range = max(effective_grid_count, 4)
-    price_range_low = round(current_price - half_range * spacing_price, 3)
-    price_range_high = round(current_price + half_range * spacing_price, 3)
+    # === 价格区间（条件单有效触发范围）===
+    # 买入深、卖出浅：下方多留空间捕捉下跌机会，上方适度覆盖反弹
+    buy_depth = effective_grid_count      # 买入基础深度：网格数
+    sell_depth = max(2, effective_grid_count // 2)  # 卖出基础深度：网格数60%，至少2格
+
+    if etf_df is not None and len(etf_df) >= 30:
+        # 支撑/阻力位
+        support, resistance = _find_support_resistance(etf_df)
+        if support is not None and support < current_price:
+            # 支撑位比基础深度更深时，延伸到支撑位下方1格缓冲
+            support_grids = int((current_price - support) / spacing_price) + 1
+            buy_depth = max(buy_depth, support_grids)
+        if resistance is not None and resistance > current_price:
+            resistance_grids = int((resistance - current_price) / spacing_price)
+            sell_depth = max(sell_depth, resistance_grids)
+
+        # 历史振幅参考：近期平均单日振幅 → 估算典型下跌/反弹幅度
+        avg_amp_abs = current_price * float(etf_df["amplitude"].mean()) / 100
+        if avg_amp_abs > 0:
+            # 近60天最大回撤（从滚动高点的最大跌幅）
+            close_60 = etf_df["close"].tail(60)
+            rolling_max = close_60.expanding().max()
+            max_dd_pct = float(((rolling_max - close_60) / rolling_max).max())
+            # 近60天最大反弹（从滚动低点的最大涨幅）
+            rolling_min = close_60.expanding().min()
+            max_bounce_pct = float(((close_60 - rolling_min) / rolling_min).max())
+
+            # 回撤深度应该覆盖历史最大回撤的80%
+            dd_grids = int(max_dd_pct * current_price / spacing_price * 0.8) + 1
+            buy_depth = max(buy_depth, dd_grids)
+            # 反弹深度覆盖历史最大反弹的60%
+            bounce_grids = int(max_bounce_pct * current_price / spacing_price * 0.6) + 1
+            sell_depth = max(sell_depth, bounce_grids)
+
+    # 合理上限：防止过度投入
+    buy_depth = min(buy_depth, 10)
+    sell_depth = min(sell_depth, 6)
+
+    price_range_low = round(current_price - buy_depth * spacing_price, 3)
+    price_range_high = round(current_price + sell_depth * spacing_price, 3)
+
+    log.info(f"  {code} 价格区间: 下{buy_depth}格({buy_depth*spacing_pct:.1f}%) "
+             f"上{sell_depth}格({sell_depth*spacing_pct:.1f}%) "
+             f"→ {price_range_low} ~ {price_range_high}")
 
     # === 同花顺条件单参数 ===
     # 每格委托股数（取第一格的股数）
