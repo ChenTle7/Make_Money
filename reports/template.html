@@ -705,35 +705,20 @@ h1 {
   <h2>明日关注 - {{ tomorrow_watch.date }} ({{ tomorrow_watch.weekday }})</h2>
   <div class="section-body">
 
-  <!-- 1. 宏观事件日历 -->
-  <h3>（一）明日重要宏观事件日历</h3>
-  <table class="grid-table" style="margin-bottom:10px;">
-    <tr><th>时间</th><th>事件</th><th>类型</th><th>重要性</th><th>来源</th></tr>
-    {% for evt in tomorrow_watch.macro_calendar %}
-    <tr>
-      <td>{{ evt.time }}</td>
-      <td style="text-align:left">{{ evt.event }}</td>
-      <td><span style="color:{{ '#ff4444' if evt.type == '确定' else '#FFD700' }}">{{ evt.type }}</span></td>
-      <td>{{ evt.importance }}</td>
-      <td style="font-size:11px;color:#888">{{ evt.source }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-
-  <!-- 2. 资金动向 -->
-  <h3>（二）资金动向前瞻</h3>
+  <!-- 1. 资金动向 -->
+  <h3>（一）资金动向前瞻</h3>
   {% for analysis in tomorrow_watch.capital_flow.analysis %}
   <div class="news-content" style="margin-bottom:6px;">{{ analysis }}</div>
   {% endfor %}
 
-  <!-- 3. 技术面分析 -->
-  <h3>（三）技术面分析</h3>
+  <!-- 2. 技术面分析 -->
+  <h3>（二）技术面分析</h3>
   {% for item in tomorrow_watch.technical_analysis %}
   <div class="news-content" style="margin-bottom:6px;">{{ item }}</div>
   {% endfor %}
 
-  <!-- 4. 操作策略 -->
-  <h3>（四）操作策略</h3>
+  <!-- 3. 操作策略 -->
+  <h3>（三）操作策略</h3>
   <div class="commentary" style="margin-bottom:8px;">
     市场情绪：{{ tomorrow_watch.strategy.mood }}
   </div>

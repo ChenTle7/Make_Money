@@ -163,16 +163,6 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
     tomorrow_html = ""
     if tomorrow_watch:
         tw = tomorrow_watch
-        # 宏观事件（每条竖排）
-        cal_items = ""
-        for evt in tw.get("macro_calendar", [])[:5]:
-            type_color = "#EF4444" if evt.get("type") == "确定" else "#EAB308"
-            cal_items += f"""<div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; color:#E2E8F0;">
-      <span style="color:#94A3B8;">{evt.get('time','')}</span> {evt.get('event','')}
-      <span style="color:{type_color}; margin-left:6px;">{evt.get('type','')}</span>
-      <span style="color:#94A3B8; margin-left:6px;">{evt.get('importance','')}</span>
-    </div>"""
-
         # 资金动向
         capital_items = ""
         for analysis in tw.get("capital_flow", {}).get("analysis", [])[:3]:
@@ -201,10 +191,7 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
     <h2 style="margin: 0 0 4px; color: #F0F4F8; font-size:16px;">明日关注</h2>
     <p style="margin: 0 0 14px; color: #64748B; font-size: 13px;">{tw.get('date','')} ({tw.get('weekday','')})</p>
 
-    <h3 style="margin: 0 0 8px; color: #F0F4F8; font-size: 14px;">宏观事件</h3>
-    {cal_items}
-
-    <h3 style="margin: 14px 0 8px; color: #F0F4F8; font-size: 14px;">资金动向</h3>
+    <h3 style="margin: 0 0 8px; color: #F0F4F8; font-size: 14px;">资金动向</h3>
     {capital_items}
 
     <h3 style="margin: 14px 0 8px; color: #F0F4F8; font-size: 14px;">技术面</h3>
