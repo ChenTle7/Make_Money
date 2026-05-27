@@ -38,12 +38,16 @@ jobs:
       - name: Generate daily report
         run: python run_daily.py
 
+      - name: Increase git buffer
+        run: git config --global http.postBuffer 524288000
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./reports/output
           keep_files: true
+          force_orphan: true
 
       - name: Send email notification
         env:
