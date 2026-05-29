@@ -699,6 +699,120 @@ h1 {
   </div>
 </div>
 
+<!-- 港股市场总结 -->
+{% if hk_summary and hk_summary.indices %}
+<div class="section collapsed">
+  <h2>港股市场总结</h2>
+  <div class="section-body">
+
+  <!-- 指数概览 -->
+  <h3>主要指数</h3>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px;">
+    {% for idx in hk_summary.indices %}
+    <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:12px; text-align:center;">
+      <div style="font-size:13px; color:var(--text2); margin-bottom:4px;">{{ idx.name }}</div>
+      <div style="font-size:18px; font-weight:700; color:var(--text);">{{ "%.2f"|format(idx.close) }}</div>
+      <div style="font-size:14px; font-weight:600; color:{% if idx.change_pct >= 0 %}var(--red){% else %}var(--green){% endif %};">
+        {{ "%+.2f"|format(idx.change_pct) }}%
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 市场宽度 -->
+  {% set breadth = hk_summary.breadth %}
+  {% if breadth.total %}
+  <h3>市场宽度</h3>
+  <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:14px; margin-bottom:16px;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:10px; text-align:center;">
+      <div>
+        <div style="font-size:12px; color:var(--text2);">上涨</div>
+        <div style="font-size:18px; font-weight:700; color:var(--red);">{{ breadth.up }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px; color:var(--text2);">下跌</div>
+        <div style="font-size:18px; font-weight:700; color:var(--green);">{{ breadth.down }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px; color:var(--text2);">平盘</div>
+        <div style="font-size:18px; font-weight:700; color:var(--text2);">{{ breadth.flat }}</div>
+      </div>
+      <div>
+        <div style="font-size:12px; color:var(--text2);">上涨占比</div>
+        <div style="font-size:18px; font-weight:700; color:{% if breadth.up_pct >= 60 %}var(--red){% elif breadth.up_pct <= 40 %}var(--green){% else %}var(--gold){% endif %};">{{ breadth.up_pct }}%</div>
+      </div>
+      {% if breadth.limit_up %}
+      <div>
+        <div style="font-size:12px; color:var(--text2);">大涨>10%</div>
+        <div style="font-size:18px; font-weight:700; color:var(--red);">{{ breadth.limit_up }}</div>
+      </div>
+      {% endif %}
+      {% if breadth.limit_down %}
+      <div>
+        <div style="font-size:12px; color:var(--text2);">大跌>10%</div>
+        <div style="font-size:18px; font-weight:700; color:var(--green);">{{ breadth.limit_down }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 涨跌幅前5 -->
+  {% if breadth.top_gainers or breadth.top_losers %}
+  <h3>涨跌幅排行</h3>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+    <!-- 涨幅前5 -->
+    <div>
+      <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:6px;">涨幅前5</div>
+      <table class="grid-table" style="font-size:13px;">
+        <tr><th>代码</th><th>名称</th><th>涨跌幅</th></tr>
+        {% for s in breadth.top_gainers %}
+        <tr>
+          <td>{{ s.code }}</td>
+          <td style="text-align:left">{{ s.name }}</td>
+          <td style="color:var(--red);">{{ "%+.2f"|format(s.change_pct) }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <!-- 跌幅前5 -->
+    <div>
+      <div style="font-size:13px; font-weight:600; color:var(--green); margin-bottom:6px;">跌幅前5</div>
+      <table class="grid-table" style="font-size:13px;">
+        <tr><th>代码</th><th>名称</th><th>涨跌幅</th></tr>
+        {% for s in breadth.top_losers %}
+        <tr>
+          <td>{{ s.code }}</td>
+          <td style="text-align:left">{{ s.name }}</td>
+          <td style="color:var(--green);">{{ "%+.2f"|format(s.change_pct) }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 市场评论 -->
+  {% if hk_summary.commentary %}
+  <h3>市场点评</h3>
+  <div class="commentary" style="margin-bottom:16px;">{{ hk_summary.commentary }}</div>
+  {% endif %}
+
+  <!-- 港股新闻 -->
+  {% if hk_summary.news %}
+  <h3>港股要闻</h3>
+  {% for item in hk_summary.news %}
+  <div class="news-content" style="margin-bottom:6px;">
+    {% if item.tag %}<span style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:4px; padding:1px 6px; font-size:11px; color:var(--gold); margin-right:6px;">{{ item.tag }}</span>{% endif %}
+    {{ item.title }}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  </div>
+</div>
+{% endif %}
+
 <!-- 明日关注（专业分析版） -->
 {% if tomorrow_watch %}
 <div class="section collapsed">

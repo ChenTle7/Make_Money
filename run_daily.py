@@ -16,6 +16,7 @@ from config import (
 from data.market_indices import fetch_all_indices, fetch_hk_index_daily
 from data.etf_data import fetch_all_etfs, fetch_etf_realtime
 from data.news_fetcher import fetch_all_news
+from data.hk_market import generate_hk_market_summary
 from analysis.trend_assessment import TrendAssessment
 from analysis.grid_params import calculate_grid
 from analysis.daily_recommendation import generate_recommendation
@@ -166,6 +167,15 @@ def run():
         log.error(f"  新闻获取失败: {e}")
         news = {"top_news": [], "global_indicators": {"indices": [], "commodities": [], "forex": []}, "research_reports": []}
 
+    # === Step 3.5: 港股市场总结 ===
+    log.info("[3.5/5] 获取港股市场总结...")
+    try:
+        hk_summary = generate_hk_market_summary()
+        log.info(f"  指数: {len(hk_summary.get('indices',[]))}个  涨跌家数: {hk_summary['breadth']['up']}涨/{hk_summary['breadth']['down']}跌  新闻: {len(hk_summary.get('news',[]))}条")
+    except Exception as e:
+        log.error(f"  港股市场总结获取失败: {e}")
+        hk_summary = {"indices": [], "breadth": {}, "news": [], "commentary": ""}
+
     # === Step 4: 分析 ===
     log.info("[4/5] 技术分析 & 生成建议...")
     etf_analysis = []
@@ -314,6 +324,7 @@ def run():
         etf_analysis=etf_analysis,
         generate_time=generate_time,
         future_timeline=timeline,
+        hk_summary=hk_summary,
     )
 
     log.info(f"{'='*50}")
@@ -321,7 +332,7 @@ def run():
 
     # 生成简易网格推荐文档
     log.info("生成网格推荐文档...")
-    build_grid_doc(date_str, etf_analysis, tomorrow)
+    build_grid_doc(date_str, etf_analysis, tomorrow, hk_summary)
 
     log.info(f"{'='*50}")
 

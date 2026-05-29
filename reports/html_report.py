@@ -18,6 +18,7 @@ def build_report(
     etf_analysis: list,
     generate_time: str = None,
     future_timeline: list = None,
+    hk_summary: dict = None,
 ) -> Path:
     """构建并保存每日HTML报告"""
     if generate_time is None:
@@ -65,6 +66,7 @@ def build_report(
         etf_analysis=etf_analysis,
         generate_time=generate_time,
         future_timeline=future_timeline or [],
+        hk_summary=hk_summary or {},
     )
 
     # 保存
@@ -79,7 +81,7 @@ def build_report(
     return report_path
 
 
-def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = None) -> str:
+def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = None, hk_summary: dict = None) -> str:
     """生成简易网格推荐文档（纯HTML片段，用于邮件内嵌和独立文件）"""
     # 按建议排序: 买入 > 持有 > 减仓 > 观望
     action_order = {"买入": 0, "持有": 1, "减仓": 2, "观望": 3}
@@ -202,7 +204,59 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
     {strategy_items}
   </div>"""
 
+    # 港股市场总结（邮件版）
+    hk_html = ""
+    if hk_summary and hk_summary.get("indices"):
+        idx_cards = ""
+        for idx in hk_summary["indices"]:
+            color = "#EF4444" if idx["change_pct"] >= 0 else "#22C55E"
+            idx_cards += f"""<div style="text-align:center; padding:8px;">
+      <div style="font-size:12px; color:#94A3B8;">{idx['name']}</div>
+      <div style="font-size:16px; font-weight:700; color:#F0F4F8;">{idx['close']:.2f}</div>
+      <div style="font-size:13px; font-weight:600; color:{color};">{idx['change_pct']:+.2f}%</div>
+    </div>"""
+
+        breadth = hk_summary.get("breadth", {})
+        breadth_html = ""
+        if breadth.get("total"):
+            breadth_html = f"""<div style="display:flex; justify-content:space-around; margin:12px 0; font-size:13px;">
+      <span style="color:#EF4444;">涨 {breadth['up']}</span>
+      <span style="color:#22C55E;">跌 {breadth['down']}</span>
+      <span style="color:#94A3B8;">平 {breadth['flat']}</span>
+      <span style="color:#EAB308;">上涨占比 {breadth['up_pct']}%</span>
+    </div>"""
+
+        movers_html = ""
+        gainers = breadth.get("top_gainers", [])
+        losers = breadth.get("top_losers", [])
+        if gainers or losers:
+            g_list = "".join(f'<span style="margin-right:8px;"><span style="color:#94A3B8;">{g["code"]}</span> {g["name"]} <span style="color:#EF4444;">{g["change_pct"]:+.2f}%</span></span>' for g in gainers[:3])
+            l_list = "".join(f'<span style="margin-right:8px;"><span style="color:#94A3B8;">{l["code"]}</span> {l["name"]} <span style="color:#22C55E;">{l["change_pct"]:+.2f}%</span></span>' for l in losers[:3])
+            movers_html = f"""<div style="font-size:13px; margin:8px 0;">
+      <div style="margin-bottom:4px;">领涨：{g_list}</div>
+      <div>领跌：{l_list}</div>
+    </div>"""
+
+        news_html = ""
+        for item in hk_summary.get("news", [])[:3]:
+            tag = f'<span style="color:#EAB308; font-size:11px; margin-right:4px;">[{item.get("tag","")}]</span>' if item.get("tag") else ""
+            news_html += f'<div style="color:#CBD5E1; font-size:12px; line-height:1.6; margin:4px 0;">{tag}{item["title"][:80]}</div>'
+
+        commentary = hk_summary.get("commentary", "")
+        comm_html = f'<div style="color:#CBD5E1; font-size:13px; line-height:1.6; margin:8px 0; padding:8px 12px; background:rgba(255,255,255,0.04); border-radius:6px;">{commentary}</div>' if commentary else ""
+
+        hk_html = f"""
+  <div style="background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 12px; padding: 20px; color: #F0F4F8; margin-bottom: 16px;">
+    <h2 style="margin: 0 0 12px; color: #F0F4F8; font-size:16px;">港股市场总结</h2>
+    <div style="display:flex; justify-content:space-around;">{idx_cards}</div>
+    {breadth_html}
+    {movers_html}
+    {comm_html}
+    {news_html}
+  </div>"""
+
     html = f"""<div style="font-family: -apple-system, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto;">
+  {hk_html}
   {tomorrow_html}
   <div style="background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 12px; padding: 24px; color: #F0F4F8;">
     <h2 style="margin: 0 0 4px; color: #F0F4F8;">网格交易推荐</h2>
