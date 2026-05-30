@@ -216,31 +216,39 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
       <div style="font-size:13px; font-weight:600; color:{color};">{idx['change_pct']:+.2f}%</div>
     </div>"""
 
-        breadth = hk_summary.get("breadth", {})
-        breadth_html = ""
-        if breadth.get("total"):
-            breadth_html = f"""<div style="display:flex; justify-content:space-around; margin:12px 0; font-size:13px;">
-      <span style="color:#EF4444;">涨 {breadth['up']}</span>
-      <span style="color:#22C55E;">跌 {breadth['down']}</span>
-      <span style="color:#94A3B8;">平 {breadth['flat']}</span>
-      <span style="color:#EAB308;">上涨占比 {breadth['up_pct']}%</span>
-    </div>"""
+        sectors_html = ""
+        for sector in hk_summary.get("sectors", []):
+            avg_color = "#EF4444" if sector["avg_today"] >= 0 else "#22C55E"
+            rows = ""
+            for stock in sector["stocks"]:
+                sc = "#EF4444" if stock["today_chg"] >= 0 else "#22C55E"
+                rows += f"""<tr>
+          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06);">{stock['code']}</td>
+          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06); text-align:left;">{stock['name']}</td>
+          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06); color:{sc};">{stock['today_chg']:+.2f}%</td>
+          <td style="padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.06); color:{'#EF4444' if stock['chg_5d']>=0 else '#22C55E'};">{stock['chg_5d']:+.2f}%</td>
+        </tr>"""
 
-        movers_html = ""
-        gainers = breadth.get("top_gainers", [])
-        losers = breadth.get("top_losers", [])
-        if gainers or losers:
-            g_list = "".join(f'<span style="margin-right:8px;"><span style="color:#94A3B8;">{g["code"]}</span> {g["name"]} <span style="color:#EF4444;">{g["change_pct"]:+.2f}%</span></span>' for g in gainers[:3])
-            l_list = "".join(f'<span style="margin-right:8px;"><span style="color:#94A3B8;">{l["code"]}</span> {l["name"]} <span style="color:#22C55E;">{l["change_pct"]:+.2f}%</span></span>' for l in losers[:3])
-            movers_html = f"""<div style="font-size:13px; margin:8px 0;">
-      <div style="margin-bottom:4px;">领涨：{g_list}</div>
-      <div>领跌：{l_list}</div>
-    </div>"""
+            news_items = ""
+            for n in hk_summary.get("sector_news", {}).get(sector["name"], [])[:2]:
+                news_items += f'<div style="font-size:12px; color:#94A3B8; margin:3px 0;">[{n["source"]}] {n["title"]}</div>'
 
-        news_html = ""
-        for item in hk_summary.get("news", [])[:3]:
-            tag = f'<span style="color:#EAB308; font-size:11px; margin-right:4px;">[{item.get("tag","")}]</span>' if item.get("tag") else ""
-            news_html += f'<div style="color:#CBD5E1; font-size:12px; line-height:1.6; margin:4px 0;">{tag}{item["title"][:80]}</div>'
+            sectors_html += f"""
+    <div style="background:rgba(255,255,255,0.04); border-radius:8px; padding:12px; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+        <span style="font-size:14px; font-weight:700; color:#F0F4F8;">{sector['name']}</span>
+        <div style="font-size:12px; font-family:monospace;">
+          今日 <strong style="color:{avg_color};">{sector['avg_today']:+.2f}%</strong>
+          <span style="margin-left:8px;">5日 <strong style="color:{'#EF4444' if sector['avg_5d']>=0 else '#22C55E'};">{sector['avg_5d']:+.2f}%</strong></span>
+          <span style="margin-left:8px;">20日 <strong style="color:{'#EF4444' if sector['avg_20d']>=0 else '#22C55E'};">{sector['avg_20d']:+.2f}%</strong></span>
+        </div>
+      </div>
+      <table style="width:100%; font-size:12px; border-collapse:collapse; color:#CBD5E1;">
+        <tr style="color:#94A3B8;"><th style="padding:4px 8px; text-align:left;">代码</th><th style="padding:4px 8px; text-align:left;">名称</th><th style="padding:4px 8px;">今日</th><th style="padding:4px 8px;">5日</th></tr>
+        {rows}
+      </table>
+      {news_items}
+    </div>"""
 
         commentary = hk_summary.get("commentary", "")
         comm_html = f'<div style="color:#CBD5E1; font-size:13px; line-height:1.6; margin:8px 0; padding:8px 12px; background:rgba(255,255,255,0.04); border-radius:6px;">{commentary}</div>' if commentary else ""
@@ -249,10 +257,8 @@ def build_grid_doc(date_str: str, etf_analysis: list, tomorrow_watch: dict = Non
   <div style="background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 12px; padding: 20px; color: #F0F4F8; margin-bottom: 16px;">
     <h2 style="margin: 0 0 12px; color: #F0F4F8; font-size:16px;">港股市场总结</h2>
     <div style="display:flex; justify-content:space-around;">{idx_cards}</div>
-    {breadth_html}
-    {movers_html}
+    {sectors_html}
     {comm_html}
-    {news_html}
   </div>"""
 
     html = f"""<div style="font-family: -apple-system, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto;">

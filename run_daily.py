@@ -171,7 +171,8 @@ def run():
     log.info("[3.5/5] 获取港股市场总结...")
     try:
         hk_summary = generate_hk_market_summary()
-        log.info(f"  指数: {len(hk_summary.get('indices',[]))}个  涨跌家数: {hk_summary['breadth']['up']}涨/{hk_summary['breadth']['down']}跌  新闻: {len(hk_summary.get('news',[]))}条")
+        sectors = hk_summary.get('sectors', [])
+        log.info(f"  指数: {len(hk_summary.get('indices',[]))}个  板块: {len(sectors)}个  评论: {len(hk_summary.get('commentary',''))}字")
     except Exception as e:
         log.error(f"  港股市场总结获取失败: {e}")
         hk_summary = {"indices": [], "breadth": {}, "news": [], "commentary": ""}
